@@ -114,7 +114,9 @@ the robot side of the connection.
 
 This is a **one-shot** connection: the offer is fixed at startup, so the node
 runs that single peer for its whole life; reconnecting means restarting the
-node. `--host`/`--port` are ignored in this mode.
+node. When the browser disconnects — tab closed, network drop — the node exits,
+since no other browser can ever take its place. `--host`/`--port` are ignored
+in this mode.
 
 After the answer is sent, the node waits up to `--connect-timeout` /
 `CONNECT_TIMEOUT` seconds (default 60) for the browser to connect. If the

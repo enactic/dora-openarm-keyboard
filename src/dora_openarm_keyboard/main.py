@@ -179,9 +179,10 @@ async def _run_async(args: argparse.Namespace) -> None:
     if args.offer is not None:
         # WebRTC-only mode: no HTTP server. The offer was handed in at startup
         # and the answer goes back over a TCP socket the caller is listening on;
-        # this node then runs that single peer for its whole life. If nobody is
-        # listening for the answer, or the browser never connects, exit cleanly
-        # instead of dumping a traceback or holding a dead connection.
+        # this node then runs that single peer for its whole life and exits
+        # when it disconnects. If nobody is listening for the answer, or the
+        # browser never connects, exit cleanly instead of dumping a traceback
+        # or holding a dead connection.
         if args.answer_port is None:
             raise SystemExit("--answer-port is required when --offer is given")
         try:
@@ -202,7 +203,11 @@ async def _run_async(args: argparse.Namespace) -> None:
 
     integrator = asyncio.create_task(_integrate(node, teleop, state))
     try:
-        while True:
+        # In WebRTC-only mode the one browser that left can never be replaced
+        # (there is no HTTP server), so the server stops running when it
+        # disconnects and this loop ends instead of publishing poses to
+        # nobody forever.
+        while server.running:
             # Poll instead of blocking on the dora iterator: while no event is
             # waiting, the sleep hands the loop to the other tasks (WebRTC and
             # the integrator), which would all stall behind a blocking next().
@@ -358,9 +363,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="run in WebRTC-only mode (no HTTP server): the browser's SDP "
         "offer (the bare SDP; its type is always offer), handed in at startup. "
         "The answer SDP is written to --answer-host/--answer-port and this node "
-        "then runs that single peer for its whole life; --host/--port are "
-        "ignored. Another service hosts the page and brokers signaling. Can "
-        "also be set via the OFFER environment variable.",
+        "then runs that single peer for its whole life, exiting when the "
+        "browser disconnects; --host/--port are ignored. Another service hosts "
+        "the page and brokers signaling. Can also be set via the OFFER "
+        "environment variable.",
     )
     parser.add_argument(
         "--answer-host",

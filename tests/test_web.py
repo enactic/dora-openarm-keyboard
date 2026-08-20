@@ -228,6 +228,48 @@ async def _run_oneshot(server, events):
         await server.stop()
 
 
+def test_oneshot_disconnect():
+    # Once the one browser of WebRTC-only mode goes away, the server stops
+    # running so the node can exit: with no HTTP server, no other browser can
+    # ever take its place.
+    server = WebTeleopServer(on_key=lambda action, name: None, host="127.0.0.1", port=0)
+    asyncio.run(_run_oneshot_disconnect(server))
+
+
+async def _run_oneshot_disconnect(server):
+    answer: dict = {}
+
+    async def handle_answer(reader, writer):
+        answer["sdp"] = (await reader.read()).decode("utf-8")
+        writer.close()
+
+    tcp = await asyncio.start_server(handle_answer, "127.0.0.1", 0)
+    host, port = tcp.sockets[0].getsockname()[:2]
+
+    pc = RTCPeerConnection(RTCConfiguration(iceServers=[]))
+    try:
+        async with tcp:
+            pc.createDataChannel("keys")
+            pc.addTransceiver("video", direction="recvonly")
+            await pc.setLocalDescription(await pc.createOffer())
+
+            negotiate = asyncio.ensure_future(
+                server.negotiate_oneshot(pc.localDescription.sdp, host, port, 10.0)
+            )
+            await _wait_for(lambda: "sdp" in answer)
+            await pc.setRemoteDescription(
+                RTCSessionDescription(sdp=answer["sdp"], type="answer")
+            )
+            await negotiate
+            assert server.running
+
+            await pc.close()
+            await _wait_for(lambda: not server.running)
+    finally:
+        await pc.close()
+        await server.stop()
+
+
 def test_oneshot_connect_timeout():
     # The answer is sent but the browser never applies it, so the peer never
     # connects: negotiate_oneshot gives up after the timeout and raises.

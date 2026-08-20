@@ -33,7 +33,9 @@ For deployments where another service hosts the page and brokers signaling,
 :meth:`WebTeleopServer.negotiate_oneshot` answers a single offer handed in at
 startup and writes the answer to a TCP socket, with no HTTP server at all; if
 the browser does not connect within a timeout it raises, so the node exits
-rather than stranding.
+rather than stranding.  Once that one browser disconnects no other can ever
+take its place, so :attr:`WebTeleopServer.running` turns False and ``main``
+exits.
 
 Everything — the HTTP server, WebRTC, and the dora polling loop in ``main`` —
 runs on one asyncio loop, so ``push_jpeg`` and the ``on_key`` callback are
@@ -168,6 +170,18 @@ class WebTeleopServer:
         self._source = FrameSource()
         self._pcs: set[RTCPeerConnection] = set()
         self._runner: aioweb.AppRunner | None = None
+        self._running = True
+
+    @property
+    def running(self) -> bool:
+        """True while the server can still serve a browser.
+
+        In HTTP-server mode, where browsers come and go, this stays True
+        until :meth:`stop`.  In WebRTC-only mode it also turns False once
+        the single peer of :meth:`negotiate_oneshot` has failed or closed:
+        no other browser can ever take its place, so the caller should exit.
+        """
+        return self._running
 
     async def start(self) -> None:
         """Start serving on the running loop; raise if the port cannot bind."""
@@ -192,6 +206,7 @@ class WebTeleopServer:
 
     async def stop(self) -> None:
         """Close every connection and stop listening."""
+        self._running = False
         for pc in list(self._pcs):
             await pc.close()
         self._pcs.clear()
@@ -299,6 +314,11 @@ class WebTeleopServer:
         answer, or the media path never came up -- the peer is closed and this
         raises :class:`RuntimeError`, so a stranded one-shot node exits instead
         of holding a dead connection forever.
+
+        Once connected, if the peer later fails or closes -- the tab closed,
+        the network dropped -- :attr:`running` turns False, so the caller can
+        exit: with no HTTP server, no other browser can ever replace the one
+        that left.
         """
         offer = RTCSessionDescription(sdp=offer_sdp, type="offer")
         pc = self._create_peer()
@@ -306,13 +326,14 @@ class WebTeleopServer:
         established: asyncio.Future[bool] = asyncio.get_running_loop().create_future()
 
         @pc.on("connectionstatechange")
-        def on_established() -> None:
-            if established.done():
-                return
+        def on_connectionstatechange() -> None:
             if pc.connectionState == "connected":
-                established.set_result(True)
+                if not established.done():
+                    established.set_result(True)
             elif pc.connectionState in ("failed", "closed"):
-                established.set_result(False)
+                if not established.done():
+                    established.set_result(False)
+                self._running = False
 
         answer = await self._answer(pc, offer)
 

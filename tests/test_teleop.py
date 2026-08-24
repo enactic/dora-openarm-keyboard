@@ -58,10 +58,10 @@ def test_motion_keys_are_per_arm():
 
 def test_grip_keys_are_per_arm():
     assert GRIP_KEYS == {
-        "c": (RIGHT, -1),
-        "x": (RIGHT, +1),
-        "n": (LEFT, -1),
-        "m": (LEFT, +1),
+        "c": (LEFT, -1),
+        "x": (LEFT, +1),
+        "n": (RIGHT, -1),
+        "m": (RIGHT, +1),
     }
 
 
@@ -114,12 +114,12 @@ def test_gripper_keys_close_and_open_their_own_arm():
     state = make_state()
 
     state.step(1.0, {"x", "m"})
-    assert state.arms[RIGHT].grip == 1.0
     assert state.arms[LEFT].grip == 1.0
+    assert state.arms[RIGHT].grip == 1.0
 
     state.step(0.5, {"c"})
-    assert state.arms[RIGHT].grip == 0.5
-    assert state.arms[LEFT].grip == 1.0
+    assert state.arms[LEFT].grip == 0.5
+    assert state.arms[RIGHT].grip == 1.0
 
 
 def test_disable_stops_motion():

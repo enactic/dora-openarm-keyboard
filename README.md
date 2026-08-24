@@ -36,8 +36,8 @@ to select first. Holding <kbd>Shift</kbd> turns the same keys into rotation.
 | Right arm | <kbd>I</kbd> / <kbd>K</kbd> | ±X | ±Pitch |
 |  | <kbd>J</kbd> / <kbd>L</kbd> | ±Y | ±Roll |
 |  | <kbd>Y</kbd> / <kbd>H</kbd> | ±Z | ±Yaw |
-| Right gripper | <kbd>C</kbd> / <kbd>X</kbd> | Open / close | |
-| Left gripper | <kbd>N</kbd> / <kbd>M</kbd> | Open / close | |
+| Left gripper | <kbd>C</kbd> / <kbd>X</kbd> | Open / close | |
+| Right gripper | <kbd>N</kbd> / <kbd>M</kbd> | Open / close | |
 | Control | <kbd>Esc</kbd> | Disable / enable teleoperation | |
 
 Motion keys are **hold to move**: the target advances while the key is down and

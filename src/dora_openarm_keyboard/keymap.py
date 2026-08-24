@@ -50,10 +50,10 @@ MOTION_KEYS: dict[str, tuple[str, int, int, int]] = {
 
 # key -> (side, sign), where +1 closes the gripper and -1 opens it.
 GRIP_KEYS: dict[str, tuple[str, int]] = {
-    "c": (RIGHT, -1),
-    "x": (RIGHT, +1),
-    "n": (LEFT, -1),
-    "m": (LEFT, +1),
+    "c": (LEFT, -1),
+    "x": (LEFT, +1),
+    "n": (RIGHT, -1),
+    "m": (RIGHT, +1),
 }
 
 # Held to reinterpret the motion keys as rotation.
@@ -80,13 +80,13 @@ Right arm
 
   Shift      hold to rotate instead of translate
 
-Right gripper
--------------
+Left gripper
+------------
   C          Open
   X          Close
 
-Left gripper
-------------
+Right gripper
+-------------
   N          Open
   M          Close
 

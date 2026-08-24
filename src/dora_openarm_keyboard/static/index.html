@@ -37,18 +37,8 @@
       main { flex: 1; display: flex; min-height: 0; }
       video { flex: 1; min-width: 0; object-fit: contain; background: #000; }
       details { padding: 0.4em 0.8em; background: #1b1b1b; }
-      details + details { border-top: 1px solid #2a2a2a; }
       summary { cursor: pointer; }
       pre { margin: 0.5em 0 0; font-family: ui-monospace, monospace; color: #aaa; }
-      ol { margin: 0.5em 0 0; padding-left: 1.5em; color: #aaa; }
-      li { margin: 0.25em 0; }
-      .hint { margin: 0.6em 0 0; color: #888; }
-      kbd {
-        padding: 0 0.3em; border: 1px solid #3a3a3a; border-radius: 3px;
-        background: #2a2a2a; color: #ddd;
-        font-family: ui-monospace, monospace; font-size: 0.9em;
-      }
-      kbd + kbd { margin-left: 0.2em; }
     </style>
   </head>
   <body>
@@ -60,38 +50,6 @@
     <main>
       <video id="video" autoplay muted playsinline></video>
     </main>
-    <details open>
-      <summary>How to use</summary>
-      <ol>
-        <li>
-          Wait for the header to say <em>connected</em>, then click this page
-          once so it has keyboard focus.
-        </li>
-        <li>
-          Choose which arm the motion keys drive:
-          <kbd>1</kbd> left, <kbd>2</kbd> right, <kbd>3</kbd> both together.
-        </li>
-        <li>
-          Hold a motion key to move and release it to stop —
-          <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>R</kbd><kbd>F</kbd>
-          translate, <kbd>I</kbd><kbd>K</kbd><kbd>J</kbd><kbd>L</kbd><kbd>U</kbd><kbd>O</kbd>
-          rotate, <kbd>G</kbd>/<kbd>H</kbd> close/open the gripper and
-          <kbd>Q</kbd>/<kbd>E</kbd> raise/lower the lifter.
-          Hold <kbd>Shift</kbd> for quarter speed while placing precisely.
-        </li>
-        <li>
-          <kbd>Esc</kbd> disables teleoperation and stops everything held;
-          press it again to enable. Leaving this page releases every key, so
-          the robot never keeps moving unwatched.
-        </li>
-      </ol>
-      <p class="hint">
-        Nothing moves? Check that the header says connected, click the page,
-        and press <kbd>Esc</kbd> in case teleoperation is disabled. If your
-        keyboard uses an input method editor, switch it to direct
-        alphanumeric input — composed keystrokes never reach this page.
-      </p>
-    </details>
     <details>
       <summary>Key bindings</summary>
       <pre id="help"></pre>

@@ -41,12 +41,9 @@ def test_normalize_printable():
     assert _normalize_browser_key("+") == "+"
 
 
-def test_normalize_backspace():
-    assert _normalize_browser_key("Backspace") == "backspace"
-
-
 def test_normalize_unusable():
     assert _normalize_browser_key("ArrowUp") is None
+    assert _normalize_browser_key("Backspace") is None
     assert _normalize_browser_key("") is None
     assert _normalize_browser_key(None) is None
     assert _normalize_browser_key(3) is None
@@ -178,7 +175,7 @@ async def _run_client(server, events, port):
             assert received["frame"].height == 48
 
             await _wait_for(lambda: "help" in received)
-            assert "Arm selection" in received["help"]
+            assert "Right arm" in received["help"]
         finally:
             await pc.close()
 

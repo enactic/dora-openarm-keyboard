@@ -14,97 +14,83 @@
 
 """Key bindings for keyboard teleoperation.
 
-The number keys select which arm receives the shared motion controls.  The
-``3`` selection applies the same increment to both arms, keeping them
-synchronized.
+Each arm has its own motion and gripper keys, so both can be driven at the
+same time without selecting one first.  Shift is a momentary modifier: while
+it is held, the motion keys drive their rotation axis instead of their
+translation axis, and releasing it always returns to translation.
 """
-
-LINEAR = "linear"
-ANGULAR = "angular"
-GRIP = "grip"
-LIFTER = "lifter"
 
 RIGHT = "right"
 LEFT = "left"
-BOTH = "both"
 
-# Axis indices shared by LINEAR (x, y, z) and ANGULAR (roll, pitch, yaw).
+# Axis indices shared by the linear (x, y, z) and angular (roll, pitch, yaw)
+# parts of a motion binding.
 X = ROLL = 0
 Y = PITCH = 1
 Z = YAW = 2
 
-# key -> (kind, axis, sign).  For GRIP, sign +1 closes and -1 opens.  For
-# LIFTER, sign +1 moves up and -1 moves down.
-KEYMAP: dict[str, tuple[str, int, int]] = {
-    # translation
-    "w": (LINEAR, X, +1),
-    "s": (LINEAR, X, -1),
-    "a": (LINEAR, Y, +1),
-    "d": (LINEAR, Y, -1),
-    "r": (LINEAR, Z, +1),
-    "f": (LINEAR, Z, -1),
-    # rotation
-    "i": (ANGULAR, PITCH, +1),
-    "k": (ANGULAR, PITCH, -1),
-    "j": (ANGULAR, ROLL, +1),
-    "l": (ANGULAR, ROLL, -1),
-    "u": (ANGULAR, YAW, +1),
-    "o": (ANGULAR, YAW, -1),
-    # gripper
-    "g": (GRIP, 0, +1),
-    "h": (GRIP, 0, -1),
-    # shared lifter
-    "q": (LIFTER, 0, +1),
-    "e": (LIFTER, 0, -1),
+# key -> (side, linear axis, angular axis, sign).  A held key advances its
+# linear axis, or its angular axis while ROTATION_KEY is also held.
+MOTION_KEYS: dict[str, tuple[str, int, int, int]] = {
+    # right arm
+    "w": (RIGHT, X, PITCH, +1),
+    "s": (RIGHT, X, PITCH, -1),
+    "a": (RIGHT, Y, YAW, +1),
+    "d": (RIGHT, Y, YAW, -1),
+    "r": (RIGHT, Z, ROLL, +1),
+    "f": (RIGHT, Z, ROLL, -1),
+    # left arm
+    "i": (LEFT, X, PITCH, +1),
+    "k": (LEFT, X, PITCH, -1),
+    "j": (LEFT, Y, YAW, +1),
+    "l": (LEFT, Y, YAW, -1),
+    "y": (LEFT, Z, ROLL, +1),
+    "h": (LEFT, Z, ROLL, -1),
 }
 
-# Edge-triggered arm and teleoperation controls.
-ARM_SELECTION_KEYS = {
-    "1": LEFT,
-    "2": RIGHT,
-    "3": BOTH,
+# key -> (side, sign), where +1 closes the gripper and -1 opens it.
+GRIP_KEYS: dict[str, tuple[str, int]] = {
+    "c": (RIGHT, -1),
+    "x": (RIGHT, +1),
+    "n": (LEFT, -1),
+    "m": (LEFT, +1),
 }
-PRECISION_KEY = "shift"
+
+# Held to reinterpret the motion keys as rotation.
+ROTATION_KEY = "shift"
+# Edge-triggered teleoperation toggle.
 TOGGLE_KEY = "escape"
 
-# Kept as compatibility controls for existing users.  They are not needed
-# for the new mapping, but Backspace and +/- remain useful in the web UI.
-RESET_KEY = "backspace"
-SPEED_UP_KEYS = ("+", "=")
-SPEED_DOWN_KEYS = ("-", "_")
-
-LIFTER_COMMANDS = {-1: "lifter-down", 0: "lifter-stop", +1: "lifter-up"}
+# No key drives the shared lifter, but a dataflow with a physical one still
+# needs it stopped when the node exits.
+LIFTER_STOP_COMMAND = "lifter-stop"
 
 HELP_TEXT = """\
-Arm selection (number keys)
-  Initial    Left arm
-  1          Left arm
-  2          Right arm
-  3          Both arms (synchronized)
+Right arm
+---------
+  W / S      +/- X   (+/- Pitch with Shift)
+  A / D      +/- Y   (+/- Yaw   with Shift)
+  R / F      +/- Z   (+/- Roll  with Shift)
 
-Translation
-  W / S      +/- X
-  A / D      +/- Y
-  R / F      +/- Z
+Left arm
+--------
+  I / K      +/- X   (+/- Pitch with Shift)
+  J / L      +/- Y   (+/- Yaw   with Shift)
+  Y / H      +/- Z   (+/- Roll  with Shift)
 
-Rotation
-  I / K      +/- Pitch
-  J / L      +/- Roll
-  U / O      +/- Yaw
+  Shift      hold to rotate instead of translate
 
-Gripper
-  G          Close
-  H          Open
+Right gripper
+-------------
+  C          Open
+  X          Close
 
-Lifter
-  Q          Up
-  E          Down
+Left gripper
+------------
+  N          Open
+  M          Close
 
 Control
-  Shift      Slow / precision while held
-  Esc        Disable / enable teleoperation
-
-Compatibility controls
-  Backspace  reset both arms to their home pose
-  + / -      speed scale up / down\
+-------
+  Esc        Disable / enable teleoperation\
 """

@@ -25,36 +25,31 @@ unchanged.
 
 ## Key bindings
 
-The initial selection is the left arm. Press `1`, `2`, or `3` to select the
-left arm, right arm, or both arms. Selection `3` applies the same motion
-increment to both arms at the same time.
+Each arm has its own keys, so both can be driven at the same time with no arm
+to select first. Holding <kbd>Shift</kbd> turns the same keys into rotation.
 
-| Category | Keys | Action |
-|---|---|---|
-| Arm selection | <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> | Left / right / both (synchronized) |
-| Translation | <kbd>W</kbd> / <kbd>S</kbd> | ±X |
-|  | <kbd>A</kbd> / <kbd>D</kbd> | ±Y |
-|  | <kbd>R</kbd> / <kbd>F</kbd> | ±Z |
-| Rotation | <kbd>I</kbd> / <kbd>K</kbd> | ±Pitch |
-|  | <kbd>J</kbd> / <kbd>L</kbd> | ±Roll |
-|  | <kbd>U</kbd> / <kbd>O</kbd> | ±Yaw |
-| Gripper | <kbd>G</kbd> / <kbd>H</kbd> | Close / open |
-| Lifter | <kbd>Q</kbd> / <kbd>E</kbd> | Up / down |
-| Control | <kbd>Shift</kbd> | Slow / precision while held |
-|  | <kbd>Esc</kbd> | Disable / enable teleoperation |
+| Category | Keys | Alone | With <kbd>Shift</kbd> |
+|---|---|---|---|
+| Right arm | <kbd>W</kbd> / <kbd>S</kbd> | ±X | ±Pitch |
+|  | <kbd>A</kbd> / <kbd>D</kbd> | ±Y | ±Yaw |
+|  | <kbd>R</kbd> / <kbd>F</kbd> | ±Z | ±Roll |
+| Left arm | <kbd>I</kbd> / <kbd>K</kbd> | ±X | ±Pitch |
+|  | <kbd>J</kbd> / <kbd>L</kbd> | ±Y | ±Yaw |
+|  | <kbd>Y</kbd> / <kbd>H</kbd> | ±Z | ±Roll |
+| Right gripper | <kbd>C</kbd> / <kbd>X</kbd> | Open / close | |
+| Left gripper | <kbd>N</kbd> / <kbd>M</kbd> | Open / close | |
+| Control | <kbd>Esc</kbd> | Disable / enable teleoperation | |
 
 Motion keys are **hold to move**: the target advances while the key is down and
-stops the moment it is released. Shift reduces the speed to 25% while held.
+stops the moment it is released. Shift is momentary in the same way — the keys
+rotate only while it is down, and releasing it always returns to translation.
 Rotation is integrated in the **tool frame**, so roll, pitch and yaw stay
 relative to the gripper rather than the world.
 
-Esc is a safety toggle. Disabling teleoperation immediately stops all held arm
-and lifter controls; after enabling it again, motion keys must be pressed again.
-Keys only reach the robot while the browser page has focus, and losing focus
-releases everything held.
-
-Backspace and `+`/`-` remain available as compatibility controls for resetting
-the home pose and changing the persistent speed scale.
+Esc is a safety toggle. Disabling teleoperation immediately stops every held
+control; after enabling it again, motion keys must be pressed again. Keys only
+reach the robot while the browser page has focus, and losing focus releases
+everything held.
 
 By default the page is only reachable from the node's own machine. To operate
 from another machine, pass `--host 0.0.0.0` and open `http://<node-host>:8080/`
@@ -65,15 +60,14 @@ no HTTPS).
 
 Check the page: is it open, does its header say *connected*, and does the tab
 actually have focus (click the page once)? If teleoperation was disabled with
-Esc, press Esc again to enable it, then press a motion key after selecting an
-arm with `1`, `2`, or `3`.
+Esc, press Esc again to enable it, then hold a motion key.
 
 ## Interface
 
 | | |
 |---|---|
 | **Inputs** | `tick` — keep-alive only, any rate works (the node integrates and publishes at its own 500 Hz pace); `image` (optional) — JPEG frame to stream to the browser, e.g. a `camera_*` output of `dora-openarm-mujoco --render` |
-| **Outputs** | `pose_right`, `pose_left` `[{"pose": float32[8]}]` — `[px, py, pz, qw, qx, qy, qz, gripper_angle]` in the scene's `arm_origin` frame; `command` `string[1]` — `lifter-up`, `lifter-down`, or `lifter-stop`; `status` `string[1]` |
+| **Outputs** | `pose_right`, `pose_left` `[{"pose": float32[8]}]` — `[px, py, pz, qw, qx, qy, qz, gripper_angle]` in the scene's `arm_origin` frame; `command` `string[1]` — `lifter-stop`, sent once at shutdown so a physical lifter in the dataflow never keeps moving; `status` `string[1]` |
 
 ```
 --linear-speed   translation speed, m/s        (default: 0.05)
@@ -138,10 +132,10 @@ uv run dora build example/dataflow-mujoco.yaml --uv
 uv run dora run example/dataflow-mujoco.yaml --uv
 ```
 
-Then open <http://127.0.0.1:8080/> and click the page. Select an arm with `1`,
-`2`, or `3`, then hold a motion key. The arms hold their startup pose until you
-press a key. If a physical lifter is in the dataflow, connect the keyboard
-node's `command` output to its `command` input.
+Then open <http://127.0.0.1:8080/> and click the page, then hold a motion key.
+The arms hold their startup pose until you press a key. If a physical lifter is
+in the dataflow, connect the keyboard node's `command` output to its `command`
+input so it is stopped when the node exits.
 
 To record what you teleoperate, use `dataflow-keyboard-mujoco.yaml` in
 [`dora-openarm-data-collection`](https://github.com/enactic/dora-openarm-data-collection)

@@ -16,17 +16,16 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 from dora_openarm_keyboard.keymap import (
-    ANGULAR,
-    ARM_SELECTION_KEYS,
-    BOTH,
-    GRIP,
-    KEYMAP,
+    GRIP_KEYS,
     LEFT,
-    LIFTER,
-    LINEAR,
+    MOTION_KEYS,
+    PITCH,
     RIGHT,
     ROLL,
+    X,
+    Y,
     YAW,
+    Z,
 )
 from dora_openarm_keyboard.main import KeyboardTeleop
 from dora_openarm_keyboard.teleop import TeleopState
@@ -46,93 +45,116 @@ def make_state(**kwargs) -> TeleopState:
     )
 
 
-def test_keymap_matches_shared_controls():
-    assert ARM_SELECTION_KEYS == {"1": LEFT, "2": RIGHT, "3": BOTH}
-    assert KEYMAP["w"] == (LINEAR, 0, +1)
-    assert KEYMAP["k"] == (ANGULAR, 1, -1)
-    assert KEYMAP["j"] == (ANGULAR, ROLL, +1)
-    assert KEYMAP["u"] == (ANGULAR, YAW, +1)
-    assert KEYMAP["g"] == (GRIP, 0, +1)
-    assert KEYMAP["q"] == (LIFTER, 0, +1)
+def test_motion_keys_are_per_arm():
+    assert MOTION_KEYS["w"] == (RIGHT, X, PITCH, +1)
+    assert MOTION_KEYS["s"] == (RIGHT, X, PITCH, -1)
+    assert MOTION_KEYS["a"] == (RIGHT, Y, YAW, +1)
+    assert MOTION_KEYS["f"] == (RIGHT, Z, ROLL, -1)
+    assert MOTION_KEYS["i"] == (LEFT, X, PITCH, +1)
+    assert MOTION_KEYS["j"] == (LEFT, Y, YAW, +1)
+    assert MOTION_KEYS["y"] == (LEFT, Z, ROLL, +1)
+    assert MOTION_KEYS["h"] == (LEFT, Z, ROLL, -1)
 
 
-def test_both_selection_applies_the_same_increment():
+def test_grip_keys_are_per_arm():
+    assert GRIP_KEYS == {
+        "c": (RIGHT, -1),
+        "x": (RIGHT, +1),
+        "n": (LEFT, -1),
+        "m": (LEFT, +1),
+    }
+
+
+def test_each_arm_moves_only_on_its_own_keys():
     state = make_state()
 
-    assert state.selection == LEFT
-    state.select("3")
-    assert state.selection == BOTH
     state.step(1.0, {"w"})
 
-    np.testing.assert_allclose(state.arms[LEFT].pos, [1.0, 0.0, 0.0])
     np.testing.assert_allclose(state.arms[RIGHT].pos, [1.0, 0.0, 0.0])
+    np.testing.assert_allclose(state.arms[LEFT].pos, np.zeros(3))
 
 
-def test_initial_selection_moves_left_arm_only():
+def test_both_arms_move_at_the_same_time():
     state = make_state()
 
-    state.step(1.0, {"w"})
+    state.step(1.0, {"w", "j", "y"})
 
-    np.testing.assert_allclose(state.arms[LEFT].pos, [1.0, 0.0, 0.0])
-    np.testing.assert_allclose(state.arms[RIGHT].pos, [0.0, 0.0, 0.0])
+    np.testing.assert_allclose(state.arms[RIGHT].pos, [1.0, 0.0, 0.0])
+    np.testing.assert_allclose(state.arms[LEFT].pos, [0.0, 1.0, 1.0])
 
 
-def test_arm_selection_only_moves_selected_arm():
+def test_opposite_keys_cancel():
     state = make_state()
-    state.select("1")
-    state.step(1.0, {"a"})
 
-    np.testing.assert_allclose(state.arms[LEFT].pos, [0.0, 1.0, 0.0])
-    np.testing.assert_allclose(state.arms[RIGHT].pos, [0.0, 0.0, 0.0])
+    state.step(1.0, {"w", "s"})
+
+    np.testing.assert_allclose(state.arms[RIGHT].pos, np.zeros(3))
 
 
-def test_shift_is_a_momentary_precision_modifier():
+def test_shift_switches_the_motion_keys_to_rotation():
     state = make_state()
-    state.select("3")
+
     state.step(1.0, {"w", "shift"})
 
-    np.testing.assert_allclose(state.arms[LEFT].pos[0], 0.25)
-    np.testing.assert_allclose(state.arms[RIGHT].pos[0], 0.25)
+    np.testing.assert_allclose(state.arms[RIGHT].pos, np.zeros(3))
+    np.testing.assert_allclose(state.arms[RIGHT].rot.as_rotvec(), [0.0, 1.0, 0.0])
 
 
-def test_disable_stops_pose_and_lifter_motion():
+def test_releasing_shift_returns_to_translation():
+    state = make_state()
+
+    state.step(1.0, {"a", "shift"})
+    np.testing.assert_allclose(state.arms[RIGHT].rot.as_rotvec(), [0.0, 0.0, 1.0])
+
+    state.step(1.0, {"a"})
+    np.testing.assert_allclose(state.arms[RIGHT].pos, [0.0, 1.0, 0.0])
+
+
+def test_gripper_keys_close_and_open_their_own_arm():
+    state = make_state()
+
+    state.step(1.0, {"x", "m"})
+    assert state.arms[RIGHT].grip == 1.0
+    assert state.arms[LEFT].grip == 1.0
+
+    state.step(0.5, {"c"})
+    assert state.arms[RIGHT].grip == 0.5
+    assert state.arms[LEFT].grip == 1.0
+
+
+def test_disable_stops_motion():
     state = make_state()
     state.toggle_enabled()
-    state.step(1.0, {"w"})
 
+    state.step(1.0, {"w", "i"})
+
+    np.testing.assert_allclose(state.arms[RIGHT].pos, np.zeros(3))
     np.testing.assert_allclose(state.arms[LEFT].pos, np.zeros(3))
-    assert state.lifter_direction({"q"}, enabled=state.enabled) == 0
 
 
-def test_lifter_direction_is_shared_and_cancels_when_both_keys_are_held():
-    state = make_state()
-
-    assert state.lifter_direction({"q"}) == 1
-    assert state.lifter_direction({"e"}) == -1
-    assert state.lifter_direction({"q", "e"}) == 0
-
-
-def test_keyboard_teleop_emits_lifter_commands_and_clears_on_disable():
+def test_escape_toggles_teleop_and_drops_keys_held_while_disabled():
     teleop = KeyboardTeleop(make_state())
-
-    teleop.enqueue("press", "q")
-    teleop.step(0.0)
-    assert teleop.take_command() == "lifter-up"
-
-    teleop.enqueue("release", "q")
-    teleop.step(0.0)
-    assert teleop.take_command() == "lifter-stop"
 
     teleop.enqueue("press", "w")
     teleop.enqueue("press", "escape")
     teleop.step(1.0)
     assert not teleop.state.enabled
-    np.testing.assert_allclose(teleop.state.arms[LEFT].pos, np.zeros(3))
-    assert teleop.take_command() is None
+    np.testing.assert_allclose(teleop.state.arms[RIGHT].pos, np.zeros(3))
 
     teleop.enqueue("release", "escape")
     teleop.enqueue("press", "escape")
     teleop.step(0.0)
     assert teleop.state.enabled
+    # W was released server-side by the disable, so it must be pressed again.
     teleop.step(1.0)
-    np.testing.assert_allclose(teleop.state.arms[LEFT].pos, np.zeros(3))
+    np.testing.assert_allclose(teleop.state.arms[RIGHT].pos, np.zeros(3))
+
+
+def test_disable_stops_a_lifter_in_the_dataflow():
+    teleop = KeyboardTeleop(make_state())
+
+    assert teleop.take_command() is None
+
+    teleop.disable()
+    assert teleop.take_command() == "lifter-stop"
+    assert teleop.take_command() is None

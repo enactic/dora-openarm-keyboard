@@ -21,8 +21,8 @@ output contract as dora-openarm-vr so either can feed dora-openarm-ik:
       [px, py, pz, qw, qx, qy, qz, gripper_angle] in the scene's ``arm_origin``
       frame.
   command : string[1]
-      ``lifter-up``, ``lifter-down`` or ``lifter-stop`` while Q/E are held or
-      released.
+      ``lifter-stop``, sent once when the node shuts down so a physical lifter
+      in the dataflow never keeps moving.
   status : string[1]
 
 Keys come from a browser page the node itself serves: they travel over a WebRTC
@@ -52,13 +52,9 @@ import pyarrow as pa
 from scipy.spatial.transform import Rotation
 
 from .keymap import (
-    ARM_SELECTION_KEYS,
     LEFT,
-    LIFTER_COMMANDS,
-    RESET_KEY,
+    LIFTER_STOP_COMMAND,
     RIGHT,
-    SPEED_DOWN_KEYS,
-    SPEED_UP_KEYS,
     TOGGLE_KEY,
 )
 from .teleop import (
@@ -77,23 +73,14 @@ from .web import WebTeleopServer
 
 _POSE_STRUCT_TYPE = pa.struct({"pose": pa.list_(pa.float32())})
 
-_SPEED_STEP = 1.25
-
 # Integration step period; the node paces itself instead of following a tick.
 _STEP_SECONDS = 0.002
 
 # A stalled loop must not teleport the target on the next step.
 _MAX_DT = 0.1
 
-_CONTROL_KEYS = frozenset(
-    (
-        *ARM_SELECTION_KEYS,
-        TOGGLE_KEY,
-        RESET_KEY,
-        *SPEED_UP_KEYS,
-        *SPEED_DOWN_KEYS,
-    )
-)
+# Edge-triggered keys, handled on press instead of being held.
+_CONTROL_KEYS = frozenset((TOGGLE_KEY,))
 
 
 def build_pose_output(pose: np.ndarray) -> pa.Array:
@@ -111,7 +98,6 @@ class KeyboardTeleop:
         self.events: queue.SimpleQueue = queue.SimpleQueue()
         self._control_down: set[str] = set()
         self._status: str | None = None
-        self._lifter_direction = 0
         self._command: str | None = None
         # Cleared by the dora loop to let the integrator task finish cleanly.
         self.running = True
@@ -149,22 +135,11 @@ class KeyboardTeleop:
                 self._handle_control(name)
 
     def _handle_control(self, name: str) -> None:
-        if name in ARM_SELECTION_KEYS:
-            selection = self.state.select(name)
-            assert selection is not None
-            self._note(f"selected {selection}")
-        elif name == TOGGLE_KEY:
+        if name == TOGGLE_KEY:
             enabled = self.state.toggle_enabled()
             if not enabled:
                 self.keys.clear()
             self._note("teleop enabled" if enabled else "teleop disabled")
-        elif name == RESET_KEY:
-            self.state.reset()
-            self._note("reset to home")
-        elif name in SPEED_UP_KEYS:
-            self._note(f"speed scale {self.state.scale_speed(_SPEED_STEP):.2f}")
-        elif name in SPEED_DOWN_KEYS:
-            self._note(f"speed scale {self.state.scale_speed(1 / _SPEED_STEP):.2f}")
 
     def _note(self, status: str) -> None:
         self._status = status
@@ -180,13 +155,6 @@ class KeyboardTeleop:
         self.drain()
         self.state.step(dt, self.keys.held)
 
-        direction = self.state.lifter_direction(
-            self.keys.held, enabled=self.state.enabled
-        )
-        if direction != self._lifter_direction:
-            self._lifter_direction = direction
-            self._command = LIFTER_COMMANDS[direction]
-
     def take_command(self) -> str | None:
         """Return and clear a newly requested shared-lifter command."""
         command, self._command = self._command, None
@@ -196,8 +164,7 @@ class KeyboardTeleop:
         """Stop all controls and queue a shared-lifter stop command."""
         self.state.enabled = False
         self.keys.clear()
-        self._lifter_direction = 0
-        self._command = LIFTER_COMMANDS[0]
+        self._command = LIFTER_STOP_COMMAND
 
 
 def _extract_jpeg(value: pa.Array) -> bytes:

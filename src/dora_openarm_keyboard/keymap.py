@@ -32,20 +32,20 @@ Z = YAW = 2
 # key -> (side, linear axis, angular axis, sign).  A held key advances its
 # linear axis, or its angular axis while ROTATION_KEY is also held.
 MOTION_KEYS: dict[str, tuple[str, int, int, int]] = {
-    # right arm
-    "w": (RIGHT, X, PITCH, +1),
-    "s": (RIGHT, X, PITCH, -1),
-    "a": (RIGHT, Y, YAW, +1),
-    "d": (RIGHT, Y, YAW, -1),
-    "r": (RIGHT, Z, ROLL, +1),
-    "f": (RIGHT, Z, ROLL, -1),
     # left arm
-    "i": (LEFT, X, PITCH, +1),
-    "k": (LEFT, X, PITCH, -1),
-    "j": (LEFT, Y, YAW, +1),
-    "l": (LEFT, Y, YAW, -1),
-    "y": (LEFT, Z, ROLL, +1),
-    "h": (LEFT, Z, ROLL, -1),
+    "w": (LEFT, X, PITCH, +1),
+    "s": (LEFT, X, PITCH, -1),
+    "a": (LEFT, Y, ROLL, +1),
+    "d": (LEFT, Y, ROLL, -1),
+    "r": (LEFT, Z, YAW, +1),
+    "f": (LEFT, Z, YAW, -1),
+    # right arm
+    "i": (RIGHT, X, PITCH, +1),
+    "k": (RIGHT, X, PITCH, -1),
+    "j": (RIGHT, Y, ROLL, +1),
+    "l": (RIGHT, Y, ROLL, -1),
+    "y": (RIGHT, Z, YAW, +1),
+    "h": (RIGHT, Z, YAW, -1),
 }
 
 # key -> (side, sign), where +1 closes the gripper and -1 opens it.
@@ -66,17 +66,17 @@ TOGGLE_KEY = "escape"
 LIFTER_STOP_COMMAND = "lifter-stop"
 
 HELP_TEXT = """\
-Right arm
----------
-  W / S      +/- X   (+/- Pitch with Shift)
-  A / D      +/- Y   (+/- Yaw   with Shift)
-  R / F      +/- Z   (+/- Roll  with Shift)
-
 Left arm
 --------
+  W / S      +/- X   (+/- Pitch with Shift)
+  A / D      +/- Y   (+/- Roll  with Shift)
+  R / F      +/- Z   (+/- Yaw   with Shift)
+
+Right arm
+---------
   I / K      +/- X   (+/- Pitch with Shift)
-  J / L      +/- Y   (+/- Yaw   with Shift)
-  Y / H      +/- Z   (+/- Roll  with Shift)
+  J / L      +/- Y   (+/- Roll  with Shift)
+  Y / H      +/- Z   (+/- Yaw   with Shift)
 
   Shift      hold to rotate instead of translate
 

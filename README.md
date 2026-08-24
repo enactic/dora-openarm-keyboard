@@ -30,12 +30,12 @@ to select first. Holding <kbd>Shift</kbd> turns the same keys into rotation.
 
 | Category | Keys | Alone | With <kbd>Shift</kbd> |
 |---|---|---|---|
-| Right arm | <kbd>W</kbd> / <kbd>S</kbd> | ±X | ±Pitch |
-|  | <kbd>A</kbd> / <kbd>D</kbd> | ±Y | ±Yaw |
-|  | <kbd>R</kbd> / <kbd>F</kbd> | ±Z | ±Roll |
-| Left arm | <kbd>I</kbd> / <kbd>K</kbd> | ±X | ±Pitch |
-|  | <kbd>J</kbd> / <kbd>L</kbd> | ±Y | ±Yaw |
-|  | <kbd>Y</kbd> / <kbd>H</kbd> | ±Z | ±Roll |
+| Left arm | <kbd>W</kbd> / <kbd>S</kbd> | ±X | ±Pitch |
+|  | <kbd>A</kbd> / <kbd>D</kbd> | ±Y | ±Roll |
+|  | <kbd>R</kbd> / <kbd>F</kbd> | ±Z | ±Yaw |
+| Right arm | <kbd>I</kbd> / <kbd>K</kbd> | ±X | ±Pitch |
+|  | <kbd>J</kbd> / <kbd>L</kbd> | ±Y | ±Roll |
+|  | <kbd>Y</kbd> / <kbd>H</kbd> | ±Z | ±Yaw |
 | Right gripper | <kbd>C</kbd> / <kbd>X</kbd> | Open / close | |
 | Left gripper | <kbd>N</kbd> / <kbd>M</kbd> | Open / close | |
 | Control | <kbd>Esc</kbd> | Disable / enable teleoperation | |

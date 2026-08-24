@@ -46,14 +46,14 @@ def make_state(**kwargs) -> TeleopState:
 
 
 def test_motion_keys_are_per_arm():
-    assert MOTION_KEYS["w"] == (RIGHT, X, PITCH, +1)
-    assert MOTION_KEYS["s"] == (RIGHT, X, PITCH, -1)
-    assert MOTION_KEYS["a"] == (RIGHT, Y, YAW, +1)
-    assert MOTION_KEYS["f"] == (RIGHT, Z, ROLL, -1)
-    assert MOTION_KEYS["i"] == (LEFT, X, PITCH, +1)
-    assert MOTION_KEYS["j"] == (LEFT, Y, YAW, +1)
-    assert MOTION_KEYS["y"] == (LEFT, Z, ROLL, +1)
-    assert MOTION_KEYS["h"] == (LEFT, Z, ROLL, -1)
+    assert MOTION_KEYS["w"] == (LEFT, X, PITCH, +1)
+    assert MOTION_KEYS["s"] == (LEFT, X, PITCH, -1)
+    assert MOTION_KEYS["a"] == (LEFT, Y, ROLL, +1)
+    assert MOTION_KEYS["f"] == (LEFT, Z, YAW, -1)
+    assert MOTION_KEYS["i"] == (RIGHT, X, PITCH, +1)
+    assert MOTION_KEYS["j"] == (RIGHT, Y, ROLL, +1)
+    assert MOTION_KEYS["y"] == (RIGHT, Z, YAW, +1)
+    assert MOTION_KEYS["h"] == (RIGHT, Z, YAW, -1)
 
 
 def test_grip_keys_are_per_arm():
@@ -70,8 +70,8 @@ def test_each_arm_moves_only_on_its_own_keys():
 
     state.step(1.0, {"w"})
 
-    np.testing.assert_allclose(state.arms[RIGHT].pos, [1.0, 0.0, 0.0])
-    np.testing.assert_allclose(state.arms[LEFT].pos, np.zeros(3))
+    np.testing.assert_allclose(state.arms[LEFT].pos, [1.0, 0.0, 0.0])
+    np.testing.assert_allclose(state.arms[RIGHT].pos, np.zeros(3))
 
 
 def test_both_arms_move_at_the_same_time():
@@ -79,8 +79,8 @@ def test_both_arms_move_at_the_same_time():
 
     state.step(1.0, {"w", "j", "y"})
 
-    np.testing.assert_allclose(state.arms[RIGHT].pos, [1.0, 0.0, 0.0])
-    np.testing.assert_allclose(state.arms[LEFT].pos, [0.0, 1.0, 1.0])
+    np.testing.assert_allclose(state.arms[LEFT].pos, [1.0, 0.0, 0.0])
+    np.testing.assert_allclose(state.arms[RIGHT].pos, [0.0, 1.0, 1.0])
 
 
 def test_opposite_keys_cancel():
@@ -88,7 +88,7 @@ def test_opposite_keys_cancel():
 
     state.step(1.0, {"w", "s"})
 
-    np.testing.assert_allclose(state.arms[RIGHT].pos, np.zeros(3))
+    np.testing.assert_allclose(state.arms[LEFT].pos, np.zeros(3))
 
 
 def test_shift_switches_the_motion_keys_to_rotation():
@@ -96,18 +96,18 @@ def test_shift_switches_the_motion_keys_to_rotation():
 
     state.step(1.0, {"w", "shift"})
 
-    np.testing.assert_allclose(state.arms[RIGHT].pos, np.zeros(3))
-    np.testing.assert_allclose(state.arms[RIGHT].rot.as_rotvec(), [0.0, 1.0, 0.0])
+    np.testing.assert_allclose(state.arms[LEFT].pos, np.zeros(3))
+    np.testing.assert_allclose(state.arms[LEFT].rot.as_rotvec(), [0.0, 1.0, 0.0])
 
 
 def test_releasing_shift_returns_to_translation():
     state = make_state()
 
     state.step(1.0, {"a", "shift"})
-    np.testing.assert_allclose(state.arms[RIGHT].rot.as_rotvec(), [0.0, 0.0, 1.0])
+    np.testing.assert_allclose(state.arms[LEFT].rot.as_rotvec(), [1.0, 0.0, 0.0])
 
     state.step(1.0, {"a"})
-    np.testing.assert_allclose(state.arms[RIGHT].pos, [0.0, 1.0, 0.0])
+    np.testing.assert_allclose(state.arms[LEFT].pos, [0.0, 1.0, 0.0])
 
 
 def test_gripper_keys_close_and_open_their_own_arm():
@@ -139,7 +139,7 @@ def test_escape_toggles_teleop_and_drops_keys_held_while_disabled():
     teleop.enqueue("press", "escape")
     teleop.step(1.0)
     assert not teleop.state.enabled
-    np.testing.assert_allclose(teleop.state.arms[RIGHT].pos, np.zeros(3))
+    np.testing.assert_allclose(teleop.state.arms[LEFT].pos, np.zeros(3))
 
     teleop.enqueue("release", "escape")
     teleop.enqueue("press", "escape")
@@ -147,7 +147,7 @@ def test_escape_toggles_teleop_and_drops_keys_held_while_disabled():
     assert teleop.state.enabled
     # W was released server-side by the disable, so it must be pressed again.
     teleop.step(1.0)
-    np.testing.assert_allclose(teleop.state.arms[RIGHT].pos, np.zeros(3))
+    np.testing.assert_allclose(teleop.state.arms[LEFT].pos, np.zeros(3))
 
 
 def test_disable_stops_a_lifter_in_the_dataflow():

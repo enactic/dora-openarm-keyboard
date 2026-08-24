@@ -62,7 +62,7 @@ from aiortc import (
 )
 from aiortc.mediastreams import VideoStreamTrack
 
-from .keymap import HELP_TEXT, RESET_KEY
+from .keymap import HELP_TEXT, PRECISION_KEY, RESET_KEY, TOGGLE_KEY
 
 # RTP video clock; pts for outgoing frames are expressed in this rate.
 _CLOCK_RATE = 90_000
@@ -74,16 +74,22 @@ def _normalize_browser_key(key: object) -> str | None:
     """Map a browser ``KeyboardEvent.key`` value to its keymap name.
 
     Printable keys arrive as themselves (``"w"``, ``"+"``, ``";"``), already
-    matching the keymap after lowercasing.  ``Backspace`` is the one special
-    key in the keymap.  Everything else — arrows, modifiers, function keys —
-    is not usable and maps to None.
+    matching the keymap after lowercasing.  ``Backspace``, ``Shift`` and
+    ``Escape`` are the special control keys.  Everything else — arrows and
+    function keys — is not usable and maps to None.
     """
     if not isinstance(key, str) or not key:
         return None
     if len(key) == 1:
         return key.lower()
-    if key.lower() == "backspace":
-        return RESET_KEY
+    special_keys = {
+        "backspace": RESET_KEY,
+        "shift": PRECISION_KEY,
+        "escape": TOGGLE_KEY,
+    }
+    special = special_keys.get(key.lower())
+    if special is not None:
+        return special
     return None
 
 

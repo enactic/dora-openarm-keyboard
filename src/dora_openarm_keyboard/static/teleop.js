@@ -40,11 +40,17 @@ function send(type, key) {
   }
 }
 
-// Only forward keys the node can use: printable characters and Backspace.
-// Modifier chords (Cmd+R, Ctrl+W, …) pass through untouched.
+// Only forward keys the node can use: printable characters and the special
+// control keys used by the teleop mapping. Modifier chords (Cmd+R, Ctrl+W,
+// …) pass through untouched.
 function usableKey(event) {
   if (event.metaKey || event.ctrlKey || event.altKey) return null;
-  if (event.key.length === 1 || event.key === "Backspace") return event.key;
+  if (
+    event.key.length === 1 ||
+    ["Backspace", "Shift", "Escape"].includes(event.key)
+  ) {
+    return event.key;
+  }
   return null;
 }
 

@@ -28,7 +28,18 @@ pitch and yaw meaningful relative to the gripper rather than the world.
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from .keymap import ANGULAR, GRIP, KEYMAP, LEFT, LINEAR, RIGHT
+from .keymap import (
+    ANGULAR,
+    ARM_SELECTION_KEYS,
+    BOTH,
+    GRIP,
+    KEYMAP,
+    LEFT,
+    LIFTER,
+    LINEAR,
+    PRECISION_KEY,
+    RIGHT,
+)
 
 # End-effector pose of the scene's ``home`` keyframe, expressed in its
 # ``arm_origin`` site frame.  The IK and MuJoCo nodes both start from that same
@@ -47,6 +58,11 @@ DEFAULT_POS_MAX = np.array([0.8, 0.8, 0.8], dtype=np.float64)
 
 MIN_SPEED_SCALE = 0.1
 MAX_SPEED_SCALE = 10.0
+
+# Shift is a momentary precision modifier, rather than a persistent speed
+# setting.  A quarter speed is slow enough for final placement while retaining
+# useful control authority.
+PRECISION_SCALE = 0.25
 
 # Fully open gripper angle, mirrored between the arms.  Kept identical to
 # dora-openarm-vr so a dataflow can swap one teleoperation source for the other.
@@ -79,6 +95,10 @@ class KeyState:
         """Mark a key up."""
         self._held.discard(key)
 
+    def clear(self) -> None:
+        """Release every key currently held."""
+        self._held.clear()
+
 
 class ArmState:
     """Target pose of a single arm."""
@@ -99,7 +119,13 @@ class ArmState:
 
 
 class TeleopState:
-    """Integrates held keys into a pair of end-effector pose targets."""
+    """Integrates held keys into a pair of end-effector pose targets.
+
+    The shared motion keys are applied to the arm selected by ``1`` or ``2``.
+    The default selection is ``3`` so a newly connected operator can move both
+    arms together immediately; selecting an individual arm is always one key
+    press away.
+    """
 
     def __init__(
         self,
@@ -135,6 +161,8 @@ class TeleopState:
             LEFT: ArmState(home_left, home_rotation),
         }
         self.speed_scale = 1.0
+        self.selection = BOTH
+        self.enabled = True
 
     def scale_speed(self, factor: float) -> float:
         """Multiply the speed scale, clamped, and return the new value."""
@@ -148,40 +176,80 @@ class TeleopState:
         for arm in self.arms.values():
             arm.reset()
 
+    def select(self, key: str) -> str | None:
+        """Select the arm named by an arm-selection key.
+
+        Return the new selection, or ``None`` for a key that is not an arm
+        selection key.
+        """
+        selection = ARM_SELECTION_KEYS.get(key)
+        if selection is not None:
+            self.selection = selection
+        return selection
+
+    def toggle_enabled(self) -> bool:
+        """Toggle teleoperation and return the resulting enabled state."""
+        self.enabled = not self.enabled
+        return self.enabled
+
+    def selected_sides(self) -> tuple[str, ...]:
+        """Return the arm sides affected by the current selection."""
+        if self.selection == LEFT:
+            return (LEFT,)
+        if self.selection == RIGHT:
+            return (RIGHT,)
+        return (LEFT, RIGHT)
+
+    @staticmethod
+    def lifter_direction(held_keys: set[str], enabled: bool = True) -> int:
+        """Return the effective lifter direction from the held keys."""
+        if not enabled:
+            return 0
+        direction = 0
+        for key in held_keys:
+            binding = KEYMAP.get(key)
+            if binding is not None and binding[0] == LIFTER:
+                direction += binding[2]
+        return int(np.sign(direction))
+
     def step(self, dt: float, held_keys: set[str]) -> None:
         """Advance both targets by one timestep of the currently held keys."""
-        if dt <= 0.0:
+        if dt <= 0.0 or not self.enabled:
             return
 
-        linear = {RIGHT: np.zeros(3), LEFT: np.zeros(3)}
-        angular = {RIGHT: np.zeros(3), LEFT: np.zeros(3)}
-        grip = {RIGHT: 0.0, LEFT: 0.0}
+        linear = np.zeros(3)
+        angular = np.zeros(3)
+        grip = 0.0
 
         for key in held_keys:
             binding = KEYMAP.get(key)
             if binding is None:
                 continue
-            side, kind, axis, sign = binding
+            kind, axis, sign = binding
             if kind == LINEAR:
-                linear[side][axis] += sign
+                linear[axis] += sign
             elif kind == ANGULAR:
-                angular[side][axis] += sign
+                angular[axis] += sign
             elif kind == GRIP:
-                grip[side] += sign
+                grip += sign
 
-        for side, arm in self.arms.items():
+        precision = PRECISION_SCALE if PRECISION_KEY in held_keys else 1.0
+        speed_scale = self.speed_scale * precision
+
+        for side in self.selected_sides():
+            arm = self.arms[side]
             arm.pos = np.clip(
-                arm.pos + linear[side] * self.linear_speed * self.speed_scale * dt,
+                arm.pos + linear * self.linear_speed * speed_scale * dt,
                 self.pos_min,
                 self.pos_max,
             )
-            rotvec = angular[side] * self.angular_speed * self.speed_scale * dt
+            rotvec = angular * self.angular_speed * speed_scale * dt
             if rotvec.any():
                 arm.rot = arm.rot * Rotation.from_rotvec(rotvec)
-            if grip[side]:
+            if grip:
                 arm.grip = float(
                     np.clip(
-                        arm.grip + grip[side] * self.grip_speed * self.speed_scale * dt,
+                        arm.grip + grip * self.grip_speed * speed_scale * dt,
                         0.0,
                         1.0,
                     )
@@ -207,7 +275,11 @@ class TeleopState:
 
     def describe(self) -> str:
         """One-line summary of the current state, for status logging."""
-        parts = [f"scale={self.speed_scale:.2f}"]
+        parts = [
+            f"selection={self.selection}",
+            f"enabled={self.enabled}",
+            f"scale={self.speed_scale:.2f}",
+        ]
         for side in (RIGHT, LEFT):
             arm = self.arms[side]
             roll, pitch, yaw = arm.rot.as_euler("xyz", degrees=True)

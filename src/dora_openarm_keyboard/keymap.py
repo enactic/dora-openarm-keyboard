@@ -14,83 +14,96 @@
 
 """Key bindings for keyboard teleoperation.
 
-The left half of the keyboard drives the left arm and the right half drives the
-right arm.  Both halves use the same geometric shape, shifted five columns
-across, so each pair straddles its home-row anchor identically::
-
-              LEFT ARM (left hand)        RIGHT ARM (right hand)
-  +X / -X          W / S                        U / J
-  +Y / -Y          A / D                        H / K
-  +Z / -Z          R / F                        O / L
-  +Pitch / -Pitch  E / C                        I / ,
-  +Yaw   / -Yaw    Q / Z                        Y / N
-  +Roll  / -Roll   T / B                        P / /
-  gripper close    G                            ;
-  gripper open     V                            .
+The number keys select which arm receives the shared motion controls.  The
+``3`` selection applies the same increment to both arms, keeping them
+synchronized.
 """
 
 LINEAR = "linear"
 ANGULAR = "angular"
 GRIP = "grip"
+LIFTER = "lifter"
 
 RIGHT = "right"
 LEFT = "left"
+BOTH = "both"
 
 # Axis indices shared by LINEAR (x, y, z) and ANGULAR (roll, pitch, yaw).
 X = ROLL = 0
 Y = PITCH = 1
 Z = YAW = 2
 
-# key -> (arm, kind, axis, sign).  For GRIP, sign +1 closes and -1 opens.
-KEYMAP: dict[str, tuple[str, str, int, int]] = {
-    # left arm
-    "w": (LEFT, LINEAR, X, +1),
-    "s": (LEFT, LINEAR, X, -1),
-    "a": (LEFT, LINEAR, Y, +1),
-    "d": (LEFT, LINEAR, Y, -1),
-    "r": (LEFT, LINEAR, Z, +1),
-    "f": (LEFT, LINEAR, Z, -1),
-    "e": (LEFT, ANGULAR, PITCH, +1),
-    "c": (LEFT, ANGULAR, PITCH, -1),
-    "q": (LEFT, ANGULAR, YAW, +1),
-    "z": (LEFT, ANGULAR, YAW, -1),
-    "t": (LEFT, ANGULAR, ROLL, +1),
-    "b": (LEFT, ANGULAR, ROLL, -1),
-    "g": (LEFT, GRIP, 0, +1),
-    "v": (LEFT, GRIP, 0, -1),
-    # right arm
-    "u": (RIGHT, LINEAR, X, +1),
-    "j": (RIGHT, LINEAR, X, -1),
-    "h": (RIGHT, LINEAR, Y, +1),
-    "k": (RIGHT, LINEAR, Y, -1),
-    "o": (RIGHT, LINEAR, Z, +1),
-    "l": (RIGHT, LINEAR, Z, -1),
-    "i": (RIGHT, ANGULAR, PITCH, +1),
-    ",": (RIGHT, ANGULAR, PITCH, -1),
-    "y": (RIGHT, ANGULAR, YAW, +1),
-    "n": (RIGHT, ANGULAR, YAW, -1),
-    "p": (RIGHT, ANGULAR, ROLL, +1),
-    "/": (RIGHT, ANGULAR, ROLL, -1),
-    ";": (RIGHT, GRIP, 0, +1),
-    ".": (RIGHT, GRIP, 0, -1),
+# key -> (kind, axis, sign).  For GRIP, sign +1 closes and -1 opens.  For
+# LIFTER, sign +1 moves up and -1 moves down.
+KEYMAP: dict[str, tuple[str, int, int]] = {
+    # translation
+    "w": (LINEAR, X, +1),
+    "s": (LINEAR, X, -1),
+    "a": (LINEAR, Y, +1),
+    "d": (LINEAR, Y, -1),
+    "r": (LINEAR, Z, +1),
+    "f": (LINEAR, Z, -1),
+    # rotation
+    "i": (ANGULAR, PITCH, +1),
+    "k": (ANGULAR, PITCH, -1),
+    "j": (ANGULAR, YAW, +1),
+    "l": (ANGULAR, YAW, -1),
+    "u": (ANGULAR, ROLL, +1),
+    "o": (ANGULAR, ROLL, -1),
+    # gripper
+    "g": (GRIP, 0, +1),
+    "h": (GRIP, 0, -1),
+    # shared lifter
+    "q": (LIFTER, 0, +1),
+    "e": (LIFTER, 0, -1),
 }
 
-# Edge-triggered control keys, handled on key-down rather than while held.
+# Edge-triggered arm and teleoperation controls.
+ARM_SELECTION_KEYS = {
+    "1": LEFT,
+    "2": RIGHT,
+    "3": BOTH,
+}
+PRECISION_KEY = "shift"
+TOGGLE_KEY = "escape"
+
+# Kept as compatibility controls for existing users.  They are not needed
+# for the new mapping, but Backspace and +/- remain useful in the web UI.
 RESET_KEY = "backspace"
 SPEED_UP_KEYS = ("+", "=")
 SPEED_DOWN_KEYS = ("-", "_")
 
-HELP_TEXT = """\
-              LEFT ARM (left hand)   RIGHT ARM (right hand)
-  +X / -X          W / S                    U / J
-  +Y / -Y          A / D                    H / K
-  +Z / -Z          R / F                    O / L
-  +Pitch / -Pitch  E / C                    I / ,
-  +Yaw   / -Yaw    Q / Z                    Y / N
-  +Roll  / -Roll   T / B                    P / /
-  gripper close    G                        ;
-  gripper open     V                        .
+LIFTER_COMMANDS = {-1: "lifter-down", 0: "lifter-stop", +1: "lifter-up"}
 
-  + / -      speed scale up / down
-  Backspace  reset both arms to their home pose\
+HELP_TEXT = """\
+Arm selection (number keys)
+  1          Left arm
+  2          Right arm
+  3          Both arms (synchronized)
+
+Translation
+  W / S      +/- X
+  A / D      +/- Y
+  R / F      +/- Z
+
+Rotation
+  I / K      +/- Pitch
+  J / L      +/- Yaw
+  U / O      +/- Roll
+
+Gripper
+  G          Close
+  H          Open
+
+Lifter
+  Q          Up
+  E          Down
+
+Control
+  Shift      Slow / precision while held
+  Esc        Disable / enable teleoperation
+
+Compatibility controls
+  Backspace  reset both arms to their home pose
+  + / -      speed scale up / down\
 """

@@ -36,8 +36,8 @@ increment to both arms at the same time.
 |  | <kbd>A</kbd> / <kbd>D</kbd> | ±Y |
 |  | <kbd>R</kbd> / <kbd>F</kbd> | ±Z |
 | Rotation | <kbd>I</kbd> / <kbd>K</kbd> | ±Pitch |
-|  | <kbd>J</kbd> / <kbd>L</kbd> | ±Yaw |
-|  | <kbd>U</kbd> / <kbd>O</kbd> | ±Roll |
+|  | <kbd>J</kbd> / <kbd>L</kbd> | ±Roll |
+|  | <kbd>U</kbd> / <kbd>O</kbd> | ±Yaw |
 | Gripper | <kbd>G</kbd> / <kbd>H</kbd> | Close / open |
 | Lifter | <kbd>Q</kbd> / <kbd>E</kbd> | Up / down |
 | Control | <kbd>Shift</kbd> | Slow / precision while held |

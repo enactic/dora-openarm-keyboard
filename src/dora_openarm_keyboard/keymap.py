@@ -46,10 +46,10 @@ KEYMAP: dict[str, tuple[str, int, int]] = {
     # rotation
     "i": (ANGULAR, PITCH, +1),
     "k": (ANGULAR, PITCH, -1),
-    "j": (ANGULAR, YAW, +1),
-    "l": (ANGULAR, YAW, -1),
-    "u": (ANGULAR, ROLL, +1),
-    "o": (ANGULAR, ROLL, -1),
+    "j": (ANGULAR, ROLL, +1),
+    "l": (ANGULAR, ROLL, -1),
+    "u": (ANGULAR, YAW, +1),
+    "o": (ANGULAR, YAW, -1),
     # gripper
     "g": (GRIP, 0, +1),
     "h": (GRIP, 0, -1),
@@ -89,8 +89,8 @@ Translation
 
 Rotation
   I / K      +/- Pitch
-  J / L      +/- Yaw
-  U / O      +/- Roll
+  J / L      +/- Roll
+  U / O      +/- Yaw
 
 Gripper
   G          Close

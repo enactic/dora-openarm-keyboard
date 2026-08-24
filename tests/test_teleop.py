@@ -25,6 +25,8 @@ from dora_openarm_keyboard.keymap import (
     LIFTER,
     LINEAR,
     RIGHT,
+    ROLL,
+    YAW,
 )
 from dora_openarm_keyboard.main import KeyboardTeleop
 from dora_openarm_keyboard.teleop import TeleopState
@@ -48,8 +50,8 @@ def test_keymap_matches_shared_controls():
     assert ARM_SELECTION_KEYS == {"1": LEFT, "2": RIGHT, "3": BOTH}
     assert KEYMAP["w"] == (LINEAR, 0, +1)
     assert KEYMAP["k"] == (ANGULAR, 1, -1)
-    assert KEYMAP["j"] == (ANGULAR, 2, +1)
-    assert KEYMAP["u"] == (ANGULAR, 0, +1)
+    assert KEYMAP["j"] == (ANGULAR, ROLL, +1)
+    assert KEYMAP["u"] == (ANGULAR, YAW, +1)
     assert KEYMAP["g"] == (GRIP, 0, +1)
     assert KEYMAP["q"] == (LIFTER, 0, +1)
 

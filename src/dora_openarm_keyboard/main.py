@@ -52,6 +52,7 @@ import pyarrow as pa
 from scipy.spatial.transform import Rotation
 
 from .keymap import (
+    HOME_KEY,
     LEFT,
     LIFTER_STOP_COMMAND,
     RIGHT,
@@ -80,7 +81,7 @@ _STEP_SECONDS = 0.002
 _MAX_DT = 0.1
 
 # Edge-triggered keys, handled on press instead of being held.
-_CONTROL_KEYS = frozenset((TOGGLE_KEY,))
+_CONTROL_KEYS = frozenset((TOGGLE_KEY, HOME_KEY))
 
 
 def build_pose_output(pose: np.ndarray) -> pa.Array:
@@ -140,6 +141,12 @@ class KeyboardTeleop:
             if not enabled:
                 self.keys.clear()
             self._note("teleop enabled" if enabled else "teleop disabled")
+        elif name == HOME_KEY:
+            # Like every other key, this one is inert while teleoperation is
+            # disabled: Esc has to mean that nothing moves the arms.
+            if self.state.enabled:
+                self.state.reset()
+                self._note("home pose")
 
     def _note(self, status: str) -> None:
         self._status = status

@@ -58,7 +58,8 @@ GRIP_KEYS: dict[str, tuple[str, int]] = {
 
 # Held to reinterpret the motion keys as rotation.
 ROTATION_KEY = "shift"
-# Edge-triggered teleoperation toggle.
+# Edge-triggered controls.
+HOME_KEY = "0"
 TOGGLE_KEY = "escape"
 
 # No key drives the shared lifter, but a dataflow with a physical one still
@@ -92,5 +93,6 @@ Right gripper
 
 Control
 -------
+  0          Send both arms back to their home pose
   Esc        Disable / enable teleoperation\
 """

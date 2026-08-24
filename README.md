@@ -38,13 +38,19 @@ to select first. Holding <kbd>Shift</kbd> turns the same keys into rotation.
 |  | <kbd>Y</kbd> / <kbd>H</kbd> | ±Z | ±Yaw |
 | Left gripper | <kbd>C</kbd> / <kbd>X</kbd> | Open / close | |
 | Right gripper | <kbd>N</kbd> / <kbd>M</kbd> | Open / close | |
-| Control | <kbd>Esc</kbd> | Disable / enable teleoperation | |
+| Control | <kbd>0</kbd> | Send both arms back to their home pose | |
+|  | <kbd>Esc</kbd> | Disable / enable teleoperation | |
 
 Motion keys are **hold to move**: the target advances while the key is down and
 stops the moment it is released. Shift is momentary in the same way — the keys
 rotate only while it is down, and releasing it always returns to translation.
 Rotation is integrated in the **tool frame**, so roll, pitch and yaw stay
 relative to the gripper rather than the world.
+
+`0` retargets both arms at their home pose in one step, leaving the grippers
+where they are so an arm carries what it is holding home instead of dropping
+it. The target jumps, so IK drives the arms back at their own speed — keep the
+workspace clear before pressing it.
 
 Esc is a safety toggle. Disabling teleoperation immediately stops every held
 control; after enabling it again, motion keys must be pressed again. Keys only
@@ -60,7 +66,8 @@ no HTTPS).
 
 Check the page: is it open, does its header say *connected*, and does the tab
 actually have focus (click the page once)? If teleoperation was disabled with
-Esc, press Esc again to enable it, then hold a motion key.
+Esc, press Esc again to enable it, then hold a motion key. `0` is inert while
+teleoperation is disabled, like every other key.
 
 ## Interface
 

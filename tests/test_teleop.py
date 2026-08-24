@@ -32,17 +32,17 @@ from dora_openarm_keyboard.teleop import TeleopState
 
 
 def make_state(**kwargs) -> TeleopState:
-    return TeleopState(
-        home_right=np.zeros(3),
-        home_left=np.zeros(3),
-        home_rotation=Rotation.identity(),
-        linear_speed=1.0,
-        angular_speed=1.0,
-        grip_speed=1.0,
-        pos_min=np.full(3, -10.0),
-        pos_max=np.full(3, 10.0),
-        **kwargs,
-    )
+    defaults = {
+        "home_right": np.zeros(3),
+        "home_left": np.zeros(3),
+        "home_rotation": Rotation.identity(),
+        "linear_speed": 1.0,
+        "angular_speed": 1.0,
+        "grip_speed": 1.0,
+        "pos_min": np.full(3, -10.0),
+        "pos_max": np.full(3, 10.0),
+    }
+    return TeleopState(**{**defaults, **kwargs})
 
 
 def test_motion_keys_are_per_arm():
@@ -148,6 +148,48 @@ def test_escape_toggles_teleop_and_drops_keys_held_while_disabled():
     # W was released server-side by the disable, so it must be pressed again.
     teleop.step(1.0)
     np.testing.assert_allclose(teleop.state.arms[LEFT].pos, np.zeros(3))
+
+
+def test_home_key_returns_both_arms_and_keeps_the_grippers():
+    teleop = KeyboardTeleop(
+        make_state(
+            home_left=np.array([1.0, 2.0, 3.0]),
+            home_right=np.array([4.0, 5.0, 6.0]),
+        )
+    )
+    state = teleop.state
+
+    teleop.enqueue("press", "w")  # left arm +X
+    teleop.enqueue("press", "i")  # right arm +X
+    teleop.enqueue("press", "x")  # left gripper closes
+    teleop.step(1.0)
+    assert not np.allclose(state.arms[LEFT].pos, [1.0, 2.0, 3.0])
+
+    teleop.enqueue("press", "shift")  # the same keys now rotate
+    teleop.step(1.0)
+    assert not np.allclose(state.arms[LEFT].rot.as_rotvec(), np.zeros(3))
+
+    teleop.enqueue("press", "0")
+    teleop.step(0.0)
+
+    np.testing.assert_allclose(state.arms[LEFT].pos, [1.0, 2.0, 3.0])
+    np.testing.assert_allclose(state.arms[RIGHT].pos, [4.0, 5.0, 6.0])
+    np.testing.assert_allclose(state.arms[LEFT].rot.as_rotvec(), np.zeros(3))
+    np.testing.assert_allclose(state.arms[RIGHT].rot.as_rotvec(), np.zeros(3))
+    assert state.arms[LEFT].grip == 1.0
+
+
+def test_home_key_does_nothing_while_teleop_is_disabled():
+    teleop = KeyboardTeleop(make_state(home_left=np.array([1.0, 2.0, 3.0])))
+    state = teleop.state
+    state.arms[LEFT].pos = np.zeros(3)
+
+    teleop.enqueue("press", "escape")
+    teleop.enqueue("press", "0")
+    teleop.step(0.0)
+
+    assert not state.enabled
+    np.testing.assert_allclose(state.arms[LEFT].pos, np.zeros(3))
 
 
 def test_disable_stops_a_lifter_in_the_dataflow():

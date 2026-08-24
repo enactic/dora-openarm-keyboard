@@ -94,9 +94,20 @@ class ArmState:
 
     def __init__(self, home_pos: np.ndarray, home_rot: Rotation) -> None:
         """Start the arm at its home pose with the gripper fully open."""
-        self.pos = np.asarray(home_pos, dtype=np.float64).copy()
+        self._home_pos = np.asarray(home_pos, dtype=np.float64).copy()
+        self._home_rot = home_rot
+        self.pos = self._home_pos.copy()
         self.rot = home_rot
         self.grip = 0.0
+
+    def reset(self) -> None:
+        """Return this arm to its home pose.
+
+        The gripper is left where it is: an arm that is holding something
+        should carry it home rather than drop it.
+        """
+        self.pos = self._home_pos.copy()
+        self.rot = self._home_rot
 
 
 class TeleopState:
@@ -140,6 +151,11 @@ class TeleopState:
             LEFT: ArmState(home_left, home_rotation),
         }
         self.enabled = True
+
+    def reset(self) -> None:
+        """Return both arms to their home poses."""
+        for arm in self.arms.values():
+            arm.reset()
 
     def toggle_enabled(self) -> bool:
         """Toggle teleoperation and return the resulting enabled state."""

@@ -57,11 +57,22 @@ def test_keymap_matches_shared_controls():
 def test_both_selection_applies_the_same_increment():
     state = make_state()
 
+    assert state.selection == LEFT
+    state.select("3")
     assert state.selection == BOTH
     state.step(1.0, {"w"})
 
     np.testing.assert_allclose(state.arms[LEFT].pos, [1.0, 0.0, 0.0])
     np.testing.assert_allclose(state.arms[RIGHT].pos, [1.0, 0.0, 0.0])
+
+
+def test_initial_selection_moves_left_arm_only():
+    state = make_state()
+
+    state.step(1.0, {"w"})
+
+    np.testing.assert_allclose(state.arms[LEFT].pos, [1.0, 0.0, 0.0])
+    np.testing.assert_allclose(state.arms[RIGHT].pos, [0.0, 0.0, 0.0])
 
 
 def test_arm_selection_only_moves_selected_arm():
@@ -75,6 +86,7 @@ def test_arm_selection_only_moves_selected_arm():
 
 def test_shift_is_a_momentary_precision_modifier():
     state = make_state()
+    state.select("3")
     state.step(1.0, {"w", "shift"})
 
     np.testing.assert_allclose(state.arms[LEFT].pos[0], 0.25)

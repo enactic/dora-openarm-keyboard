@@ -77,6 +77,7 @@ LIFTER_COMMANDS = {-1: "lifter-down", 0: "lifter-stop", +1: "lifter-up"}
 
 HELP_TEXT = """\
 Arm selection (number keys)
+  Initial    Left arm
   1          Left arm
   2          Right arm
   3          Both arms (synchronized)

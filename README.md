@@ -25,8 +25,9 @@ unchanged.
 
 ## Key bindings
 
-Press `1`, `2`, or `3` to select the left arm, right arm, or both arms. Selection
-`3` applies the same motion increment to both arms at the same time.
+The initial selection is the left arm. Press `1`, `2`, or `3` to select the
+left arm, right arm, or both arms. Selection `3` applies the same motion
+increment to both arms at the same time.
 
 | Category | Keys | Action |
 |---|---|---|

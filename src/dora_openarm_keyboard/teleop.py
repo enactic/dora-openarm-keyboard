@@ -31,7 +31,6 @@ from scipy.spatial.transform import Rotation
 from .keymap import (
     ANGULAR,
     ARM_SELECTION_KEYS,
-    BOTH,
     GRIP,
     KEYMAP,
     LEFT,
@@ -122,9 +121,8 @@ class TeleopState:
     """Integrates held keys into a pair of end-effector pose targets.
 
     The shared motion keys are applied to the arm selected by ``1`` or ``2``.
-    The default selection is ``3`` so a newly connected operator can move both
-    arms together immediately; selecting an individual arm is always one key
-    press away.
+    The default selection is ``1`` (left arm); select ``3`` to move both arms
+    together.
     """
 
     def __init__(
@@ -161,7 +159,7 @@ class TeleopState:
             LEFT: ArmState(home_left, home_rotation),
         }
         self.speed_scale = 1.0
-        self.selection = BOTH
+        self.selection = LEFT
         self.enabled = True
 
     def scale_speed(self, factor: float) -> float:

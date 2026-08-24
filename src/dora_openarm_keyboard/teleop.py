@@ -94,20 +94,42 @@ class ArmState:
 
     def __init__(self, home_pos: np.ndarray, home_rot: Rotation) -> None:
         """Start the arm at its home pose with the gripper fully open."""
-        self._home_pos = np.asarray(home_pos, dtype=np.float64).copy()
-        self._home_rot = home_rot
-        self.pos = self._home_pos.copy()
+        self.home_pos = np.asarray(home_pos, dtype=np.float64).copy()
+        self.home_rot = home_rot
+        self.pos = self.home_pos.copy()
         self.rot = home_rot
         self.grip = 0.0
 
-    def reset(self) -> None:
-        """Return this arm to its home pose.
+    def step_home(self, max_distance: float, max_angle: float) -> bool:
+        """Move the target toward home by one bounded step.
 
-        The gripper is left where it is: an arm that is holding something
-        should carry it home rather than drop it.
+        Return whether the arm is now home.  The gripper is left where it is:
+        an arm that is holding something carries it home rather than dropping
+        it on the way.
         """
-        self.pos = self._home_pos.copy()
-        self.rot = self._home_rot
+        at_home = True
+
+        offset = self.home_pos - self.pos
+        distance = float(np.linalg.norm(offset))
+        if distance <= max_distance:
+            self.pos = self.home_pos.copy()
+        else:
+            self.pos = self.pos + offset * (max_distance / distance)
+            at_home = False
+
+        # Integrated in the tool frame, like the manual rotation keys, so the
+        # target follows the same geodesic it would under manual control.
+        offset_rotvec = (self.rot.inv() * self.home_rot).as_rotvec()
+        angle = float(np.linalg.norm(offset_rotvec))
+        if angle <= max_angle:
+            self.rot = self.home_rot
+        else:
+            self.rot = self.rot * Rotation.from_rotvec(
+                offset_rotvec * (max_angle / angle)
+            )
+            at_home = False
+
+        return at_home
 
 
 class TeleopState:
@@ -151,11 +173,15 @@ class TeleopState:
             LEFT: ArmState(home_left, home_rotation),
         }
         self.enabled = True
+        self.homing = False
 
-    def reset(self) -> None:
-        """Return both arms to their home poses."""
-        for arm in self.arms.values():
-            arm.reset()
+    def start_home(self) -> None:
+        """Begin walking both targets back to their home poses."""
+        self.homing = True
+
+    def cancel_home(self) -> None:
+        """Abort a home return, leaving both targets where they are."""
+        self.homing = False
 
     def toggle_enabled(self) -> bool:
         """Toggle teleoperation and return the resulting enabled state."""
@@ -165,6 +191,18 @@ class TeleopState:
     def step(self, dt: float, held_keys: set[str]) -> None:
         """Advance both targets by one timestep of the currently held keys."""
         if dt <= 0.0 or not self.enabled:
+            return
+
+        if self.homing:
+            # A home return owns both targets and moves them at the same speed
+            # manual control would, so the arms come back at a speed the
+            # operator has already accepted.  Nothing is held while it runs:
+            # pressing a motion key cancels it and hands control straight back.
+            reached = [
+                arm.step_home(self.linear_speed * dt, self.angular_speed * dt)
+                for arm in self.arms.values()
+            ]
+            self.homing = not all(reached)
             return
 
         # Shift is momentary: the motion keys drive rotation only while it is
@@ -222,7 +260,7 @@ class TeleopState:
 
     def describe(self) -> str:
         """One-line summary of the current state, for status logging."""
-        parts = [f"enabled={self.enabled}"]
+        parts = [f"enabled={self.enabled}", f"homing={self.homing}"]
         for side in (RIGHT, LEFT):
             arm = self.arms[side]
             roll, pitch, yaw = arm.rot.as_euler("xyz", degrees=True)

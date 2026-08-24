@@ -62,6 +62,12 @@ ROTATION_KEY = "shift"
 HOME_KEY = "0"
 TOGGLE_KEY = "escape"
 
+
+def drives_motion(key: str) -> bool:
+    """Whether a key moves an arm or one of the grippers."""
+    return key in MOTION_KEYS or key in GRIP_KEYS
+
+
 # No key drives the shared lifter, but a dataflow with a physical one still
 # needs it stopped when the node exits.
 LIFTER_STOP_COMMAND = "lifter-stop"
@@ -93,6 +99,6 @@ Right gripper
 
 Control
 -------
-  0          Send both arms back to their home pose
+  0          Return both arms home; any motion key or Esc aborts
   Esc        Disable / enable teleoperation\
 """

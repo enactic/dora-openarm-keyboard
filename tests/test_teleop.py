@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import pytest
 from scipy.spatial.transform import Rotation
 
 from dora_openarm_keyboard.keymap import (
@@ -150,33 +151,84 @@ def test_escape_toggles_teleop_and_drops_keys_held_while_disabled():
     np.testing.assert_allclose(teleop.state.arms[LEFT].pos, np.zeros(3))
 
 
-def test_home_key_returns_both_arms_and_keeps_the_grippers():
-    teleop = KeyboardTeleop(
-        make_state(
-            home_left=np.array([1.0, 2.0, 3.0]),
-            home_right=np.array([4.0, 5.0, 6.0]),
-        )
-    )
+def test_home_return_walks_the_target_back_at_the_teleop_speed():
+    state = make_state(home_left=np.array([3.0, 0.0, 0.0]))
+
+    state.step(1.0, {"s"})  # left arm -X, one metre away from home
+    np.testing.assert_allclose(state.arms[LEFT].pos, [2.0, 0.0, 0.0])
+
+    state.start_home()
+    state.step(0.5, set())
+    np.testing.assert_allclose(state.arms[LEFT].pos, [2.5, 0.0, 0.0])
+    assert state.homing
+
+    state.step(0.5, set())
+    np.testing.assert_allclose(state.arms[LEFT].pos, [3.0, 0.0, 0.0])
+    assert not state.homing
+
+
+def test_home_return_unwinds_the_orientation_too():
+    state = make_state()
+
+    state.step(1.0, {"a", "shift"})  # left arm +Roll, one radian from home
+    state.start_home()
+
+    state.step(0.5, set())
+    assert np.linalg.norm(state.arms[LEFT].rot.as_rotvec()) == pytest.approx(0.5)
+    assert state.homing
+
+    state.step(0.5, set())
+    np.testing.assert_allclose(state.arms[LEFT].rot.as_rotvec(), np.zeros(3))
+    assert not state.homing
+
+
+def test_home_return_keeps_the_grippers_where_they_are():
+    state = make_state(home_left=np.array([1.0, 0.0, 0.0]))
+
+    state.step(1.0, {"x"})  # left gripper closes
+    state.start_home()
+    for _ in range(10):
+        state.step(0.5, set())
+
+    np.testing.assert_allclose(state.arms[LEFT].pos, [1.0, 0.0, 0.0])
+    assert state.arms[LEFT].grip == 1.0
+
+
+def test_a_motion_key_cancels_the_home_return():
+    teleop = KeyboardTeleop(make_state(home_left=np.array([5.0, 0.0, 0.0])))
     state = teleop.state
 
-    teleop.enqueue("press", "w")  # left arm +X
-    teleop.enqueue("press", "i")  # right arm +X
-    teleop.enqueue("press", "x")  # left gripper closes
+    teleop.enqueue("press", "s")  # left arm -X, away from home
     teleop.step(1.0)
-    assert not np.allclose(state.arms[LEFT].pos, [1.0, 2.0, 3.0])
+    np.testing.assert_allclose(state.arms[LEFT].pos, [4.0, 0.0, 0.0])
 
-    teleop.enqueue("press", "shift")  # the same keys now rotate
+    # Pressing 0 releases the held key, so only the home return drives the arm.
+    teleop.enqueue("press", "0")
+    teleop.step(0.5)
+    assert state.homing
+    np.testing.assert_allclose(state.arms[LEFT].pos, [4.5, 0.0, 0.0])
+
+    teleop.enqueue("press", "s")
     teleop.step(1.0)
-    assert not np.allclose(state.arms[LEFT].rot.as_rotvec(), np.zeros(3))
+    assert not state.homing
+    np.testing.assert_allclose(state.arms[LEFT].pos, [3.5, 0.0, 0.0])
+
+
+def test_escape_aborts_the_home_return_where_the_arms_are():
+    teleop = KeyboardTeleop(make_state(home_left=np.array([5.0, 0.0, 0.0])))
+    state = teleop.state
+    state.arms[LEFT].pos = np.zeros(3)
 
     teleop.enqueue("press", "0")
-    teleop.step(0.0)
+    teleop.step(1.0)
+    assert state.homing
+    np.testing.assert_allclose(state.arms[LEFT].pos, [1.0, 0.0, 0.0])
 
-    np.testing.assert_allclose(state.arms[LEFT].pos, [1.0, 2.0, 3.0])
-    np.testing.assert_allclose(state.arms[RIGHT].pos, [4.0, 5.0, 6.0])
-    np.testing.assert_allclose(state.arms[LEFT].rot.as_rotvec(), np.zeros(3))
-    np.testing.assert_allclose(state.arms[RIGHT].rot.as_rotvec(), np.zeros(3))
-    assert state.arms[LEFT].grip == 1.0
+    teleop.enqueue("press", "escape")
+    teleop.step(1.0)
+    assert not state.homing
+    assert not state.enabled
+    np.testing.assert_allclose(state.arms[LEFT].pos, [1.0, 0.0, 0.0])
 
 
 def test_home_key_does_nothing_while_teleop_is_disabled():
@@ -186,9 +238,10 @@ def test_home_key_does_nothing_while_teleop_is_disabled():
 
     teleop.enqueue("press", "escape")
     teleop.enqueue("press", "0")
-    teleop.step(0.0)
+    teleop.step(1.0)
 
     assert not state.enabled
+    assert not state.homing
     np.testing.assert_allclose(state.arms[LEFT].pos, np.zeros(3))
 
 

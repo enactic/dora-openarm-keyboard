@@ -57,6 +57,7 @@ from .keymap import (
     LIFTER_STOP_COMMAND,
     RIGHT,
     TOGGLE_KEY,
+    drives_motion,
 )
 from .teleop import (
     DEFAULT_ANGULAR_SPEED,
@@ -123,6 +124,10 @@ class KeyboardTeleop:
                     # A key pressed while disabled must not become active when
                     # teleoperation is enabled again without a fresh press.
                     if self.state.enabled:
+                        if self.state.homing and drives_motion(name):
+                            # Taking manual control aborts the home return.
+                            self.state.cancel_home()
+                            self._note("home return cancelled")
                         self.keys.press(name)
                 else:
                     self.keys.release(name)
@@ -139,14 +144,20 @@ class KeyboardTeleop:
         if name == TOGGLE_KEY:
             enabled = self.state.toggle_enabled()
             if not enabled:
+                # Esc is the abort for a home return too, so it always stops
+                # the arms wherever they are.
+                self.state.cancel_home()
                 self.keys.clear()
             self._note("teleop enabled" if enabled else "teleop disabled")
         elif name == HOME_KEY:
             # Like every other key, this one is inert while teleoperation is
             # disabled: Esc has to mean that nothing moves the arms.
             if self.state.enabled:
-                self.state.reset()
-                self._note("home pose")
+                self.state.start_home()
+                # The home return drives the targets on its own; a held key
+                # would fight it, and pressing one again cancels it anyway.
+                self.keys.clear()
+                self._note("returning to home pose")
 
     def _note(self, status: str) -> None:
         self._status = status
@@ -160,7 +171,10 @@ class KeyboardTeleop:
     def step(self, dt: float) -> None:
         """Apply queued key events, then integrate one timestep."""
         self.drain()
+        homing = self.state.homing
         self.state.step(dt, self.keys.held)
+        if homing and not self.state.homing:
+            self._note("home pose reached")
 
     def take_command(self) -> str | None:
         """Return and clear a newly requested shared-lifter command."""
@@ -170,6 +184,7 @@ class KeyboardTeleop:
     def disable(self) -> None:
         """Stop all controls and queue a shared-lifter stop command."""
         self.state.enabled = False
+        self.state.cancel_home()
         self.keys.clear()
         self._command = LIFTER_STOP_COMMAND
 

@@ -20,6 +20,9 @@ output contract as dora-openarm-vr so either can feed dora-openarm-ik:
   pose_right / pose_left : [{"pose": float32[8]}]
       [px, py, pz, qw, qx, qy, qz, gripper_angle] in the scene's ``arm_origin``
       frame.
+  command : string[1]
+      ``lifter-stop``, sent once when the node shuts down so a physical lifter
+      in the dataflow never keeps moving.
   status : string[1]
 
 Keys come from a browser page the node itself serves: they travel over a WebRTC
@@ -49,11 +52,12 @@ import pyarrow as pa
 from scipy.spatial.transform import Rotation
 
 from .keymap import (
+    HOME_KEY,
     LEFT,
-    RESET_KEY,
+    LIFTER_STOP_COMMAND,
     RIGHT,
-    SPEED_DOWN_KEYS,
-    SPEED_UP_KEYS,
+    TOGGLE_KEY,
+    drives_motion,
 )
 from .teleop import (
     DEFAULT_ANGULAR_SPEED,
@@ -71,15 +75,14 @@ from .web import WebTeleopServer
 
 _POSE_STRUCT_TYPE = pa.struct({"pose": pa.list_(pa.float32())})
 
-_SPEED_STEP = 1.25
-
 # Integration step period; the node paces itself instead of following a tick.
 _STEP_SECONDS = 0.002
 
 # A stalled loop must not teleport the target on the next step.
 _MAX_DT = 0.1
 
-_CONTROL_KEYS = frozenset((RESET_KEY, *SPEED_UP_KEYS, *SPEED_DOWN_KEYS))
+# Edge-triggered keys, handled on press instead of being held.
+_CONTROL_KEYS = frozenset((TOGGLE_KEY, HOME_KEY))
 
 
 def build_pose_output(pose: np.ndarray) -> pa.Array:
@@ -97,6 +100,7 @@ class KeyboardTeleop:
         self.events: queue.SimpleQueue = queue.SimpleQueue()
         self._control_down: set[str] = set()
         self._status: str | None = None
+        self._command: str | None = None
         # Cleared by the dora loop to let the integrator task finish cleanly.
         self.running = True
 
@@ -117,7 +121,14 @@ class KeyboardTeleop:
                 return
             if name not in _CONTROL_KEYS:
                 if action == "press":
-                    self.keys.press(name)
+                    # A key pressed while disabled must not become active when
+                    # teleoperation is enabled again without a fresh press.
+                    if self.state.enabled:
+                        if self.state.homing and drives_motion(name):
+                            # Taking manual control aborts the home return.
+                            self.state.cancel_home()
+                            self._note("home return cancelled")
+                        self.keys.press(name)
                 else:
                     self.keys.release(name)
                 continue
@@ -130,13 +141,23 @@ class KeyboardTeleop:
                 self._handle_control(name)
 
     def _handle_control(self, name: str) -> None:
-        if name == RESET_KEY:
-            self.state.reset()
-            self._note("reset to home")
-        elif name in SPEED_UP_KEYS:
-            self._note(f"speed scale {self.state.scale_speed(_SPEED_STEP):.2f}")
-        elif name in SPEED_DOWN_KEYS:
-            self._note(f"speed scale {self.state.scale_speed(1 / _SPEED_STEP):.2f}")
+        if name == TOGGLE_KEY:
+            enabled = self.state.toggle_enabled()
+            if not enabled:
+                # Esc is the abort for a home return too, so it always stops
+                # the arms wherever they are.
+                self.state.cancel_home()
+                self.keys.clear()
+            self._note("teleop enabled" if enabled else "teleop disabled")
+        elif name == HOME_KEY:
+            # Like every other key, this one is inert while teleoperation is
+            # disabled: Esc has to mean that nothing moves the arms.
+            if self.state.enabled:
+                self.state.start_home()
+                # The home return drives the targets on its own; a held key
+                # would fight it, and pressing one again cancels it anyway.
+                self.keys.clear()
+                self._note("returning to home pose")
 
     def _note(self, status: str) -> None:
         self._status = status
@@ -150,7 +171,22 @@ class KeyboardTeleop:
     def step(self, dt: float) -> None:
         """Apply queued key events, then integrate one timestep."""
         self.drain()
+        homing = self.state.homing
         self.state.step(dt, self.keys.held)
+        if homing and not self.state.homing:
+            self._note("home pose reached")
+
+    def take_command(self) -> str | None:
+        """Return and clear a newly requested shared-lifter command."""
+        command, self._command = self._command, None
+        return command
+
+    def disable(self) -> None:
+        """Stop all controls and queue a shared-lifter stop command."""
+        self.state.enabled = False
+        self.state.cancel_home()
+        self.keys.clear()
+        self._command = LIFTER_STOP_COMMAND
 
 
 def _extract_jpeg(value: pa.Array) -> bytes:
@@ -234,21 +270,36 @@ async def _integrate(
 ) -> None:
     """Advance the target pose and publish it at the node's own pace."""
     last = time.perf_counter()
-    while teleop.running:
-        await asyncio.sleep(_STEP_SECONDS)
-        now = time.perf_counter()
-        dt = min(now - last, _MAX_DT)
-        last = now
+    try:
+        while teleop.running:
+            await asyncio.sleep(_STEP_SECONDS)
+            now = time.perf_counter()
+            dt = min(now - last, _MAX_DT)
+            last = now
 
-        teleop.step(dt)
+            teleop.step(dt)
 
-        metadata = {"timestamp": time.time_ns()}
-        node.send_output("pose_right", build_pose_output(state.pose(RIGHT)), metadata)
-        node.send_output("pose_left", build_pose_output(state.pose(LEFT)), metadata)
+            metadata = {"timestamp": time.time_ns()}
+            node.send_output(
+                "pose_right", build_pose_output(state.pose(RIGHT)), metadata
+            )
+            node.send_output("pose_left", build_pose_output(state.pose(LEFT)), metadata)
 
-        status = teleop.take_status()
-        if status is not None:
-            node.send_output("status", pa.array([status]), metadata)
+            status = teleop.take_status()
+            if status is not None:
+                node.send_output("status", pa.array([status]), metadata)
+
+            command = teleop.take_command()
+            if command is not None:
+                node.send_output("command", pa.array([command]), metadata)
+    finally:
+        # A graceful node shutdown must not leave a physical lifter moving.
+        teleop.disable()
+        node.send_output(
+            "command",
+            pa.array([teleop.take_command()]),
+            {"timestamp": time.time_ns()},
+        )
 
 
 def _default_answer_port() -> int | None:

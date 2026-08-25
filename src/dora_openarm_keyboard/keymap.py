@@ -14,83 +14,91 @@
 
 """Key bindings for keyboard teleoperation.
 
-The left half of the keyboard drives the left arm and the right half drives the
-right arm.  Both halves use the same geometric shape, shifted five columns
-across, so each pair straddles its home-row anchor identically::
-
-              LEFT ARM (left hand)        RIGHT ARM (right hand)
-  +X / -X          W / S                        U / J
-  +Y / -Y          A / D                        H / K
-  +Z / -Z          R / F                        O / L
-  +Pitch / -Pitch  E / C                        I / ,
-  +Yaw   / -Yaw    Q / Z                        Y / N
-  +Roll  / -Roll   T / B                        P / /
-  gripper close    G                            ;
-  gripper open     V                            .
+Each arm has its own motion and gripper keys, so both can be driven at the
+same time without selecting one first.  Shift is a momentary modifier: while
+it is held, the motion keys drive their rotation axis instead of their
+translation axis, and releasing it always returns to translation.
 """
-
-LINEAR = "linear"
-ANGULAR = "angular"
-GRIP = "grip"
 
 RIGHT = "right"
 LEFT = "left"
 
-# Axis indices shared by LINEAR (x, y, z) and ANGULAR (roll, pitch, yaw).
+# Axis indices shared by the linear (x, y, z) and angular (roll, pitch, yaw)
+# parts of a motion binding.
 X = ROLL = 0
 Y = PITCH = 1
 Z = YAW = 2
 
-# key -> (arm, kind, axis, sign).  For GRIP, sign +1 closes and -1 opens.
-KEYMAP: dict[str, tuple[str, str, int, int]] = {
+# key -> (side, linear axis, angular axis, sign).  A held key advances its
+# linear axis, or its angular axis while ROTATION_KEY is also held.
+MOTION_KEYS: dict[str, tuple[str, int, int, int]] = {
     # left arm
-    "w": (LEFT, LINEAR, X, +1),
-    "s": (LEFT, LINEAR, X, -1),
-    "a": (LEFT, LINEAR, Y, +1),
-    "d": (LEFT, LINEAR, Y, -1),
-    "r": (LEFT, LINEAR, Z, +1),
-    "f": (LEFT, LINEAR, Z, -1),
-    "e": (LEFT, ANGULAR, PITCH, +1),
-    "c": (LEFT, ANGULAR, PITCH, -1),
-    "q": (LEFT, ANGULAR, YAW, +1),
-    "z": (LEFT, ANGULAR, YAW, -1),
-    "t": (LEFT, ANGULAR, ROLL, +1),
-    "b": (LEFT, ANGULAR, ROLL, -1),
-    "g": (LEFT, GRIP, 0, +1),
-    "v": (LEFT, GRIP, 0, -1),
+    "w": (LEFT, X, PITCH, +1),
+    "s": (LEFT, X, PITCH, -1),
+    "a": (LEFT, Y, ROLL, +1),
+    "d": (LEFT, Y, ROLL, -1),
+    "r": (LEFT, Z, YAW, +1),
+    "f": (LEFT, Z, YAW, -1),
     # right arm
-    "u": (RIGHT, LINEAR, X, +1),
-    "j": (RIGHT, LINEAR, X, -1),
-    "h": (RIGHT, LINEAR, Y, +1),
-    "k": (RIGHT, LINEAR, Y, -1),
-    "o": (RIGHT, LINEAR, Z, +1),
-    "l": (RIGHT, LINEAR, Z, -1),
-    "i": (RIGHT, ANGULAR, PITCH, +1),
-    ",": (RIGHT, ANGULAR, PITCH, -1),
-    "y": (RIGHT, ANGULAR, YAW, +1),
-    "n": (RIGHT, ANGULAR, YAW, -1),
-    "p": (RIGHT, ANGULAR, ROLL, +1),
-    "/": (RIGHT, ANGULAR, ROLL, -1),
-    ";": (RIGHT, GRIP, 0, +1),
-    ".": (RIGHT, GRIP, 0, -1),
+    "i": (RIGHT, X, PITCH, +1),
+    "k": (RIGHT, X, PITCH, -1),
+    "j": (RIGHT, Y, ROLL, +1),
+    "l": (RIGHT, Y, ROLL, -1),
+    "y": (RIGHT, Z, YAW, +1),
+    "h": (RIGHT, Z, YAW, -1),
 }
 
-# Edge-triggered control keys, handled on key-down rather than while held.
-RESET_KEY = "backspace"
-SPEED_UP_KEYS = ("+", "=")
-SPEED_DOWN_KEYS = ("-", "_")
+# key -> (side, sign), where +1 closes the gripper and -1 opens it.
+GRIP_KEYS: dict[str, tuple[str, int]] = {
+    "c": (LEFT, -1),
+    "x": (LEFT, +1),
+    "n": (RIGHT, -1),
+    "m": (RIGHT, +1),
+}
+
+# Held to reinterpret the motion keys as rotation.
+ROTATION_KEY = "shift"
+# Edge-triggered controls.
+HOME_KEY = "0"
+TOGGLE_KEY = "escape"
+
+
+def drives_motion(key: str) -> bool:
+    """Whether a key moves an arm or one of the grippers."""
+    return key in MOTION_KEYS or key in GRIP_KEYS
+
+
+# No key drives the shared lifter, but a dataflow with a physical one still
+# needs it stopped when the node exits.
+LIFTER_STOP_COMMAND = "lifter-stop"
 
 HELP_TEXT = """\
-              LEFT ARM (left hand)   RIGHT ARM (right hand)
-  +X / -X          W / S                    U / J
-  +Y / -Y          A / D                    H / K
-  +Z / -Z          R / F                    O / L
-  +Pitch / -Pitch  E / C                    I / ,
-  +Yaw   / -Yaw    Q / Z                    Y / N
-  +Roll  / -Roll   T / B                    P / /
-  gripper close    G                        ;
-  gripper open     V                        .
+Left arm
+--------
+  W / S      +/- X   (+/- Pitch with Shift)
+  A / D      +/- Y   (+/- Roll  with Shift)
+  R / F      +/- Z   (+/- Yaw   with Shift)
 
-  + / -      speed scale up / down
-  Backspace  reset both arms to their home pose\
+Right arm
+---------
+  I / K      +/- X   (+/- Pitch with Shift)
+  J / L      +/- Y   (+/- Roll  with Shift)
+  Y / H      +/- Z   (+/- Yaw   with Shift)
+
+  Shift      hold to rotate instead of translate
+
+Left gripper
+------------
+  C          Open
+  X          Close
+
+Right gripper
+-------------
+  N          Open
+  M          Close
+
+Control
+-------
+  0          Return both arms home; any motion key or Esc aborts
+  Esc        Disable / enable teleoperation\
 """

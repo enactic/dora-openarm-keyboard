@@ -25,35 +25,39 @@ unchanged.
 
 ## Key bindings
 
-The left half of the keyboard drives the left arm and the right half drives the
-right arm. Both halves use the same shape, shifted five columns across, so each
-pair straddles its home-row anchor identically — `W`/`S` around `A` on the left
-is `U`/`J` around `H` on the right.
+Each arm has its own keys, so both can be driven at the same time with no arm
+to select first. Holding <kbd>Shift</kbd> turns the same keys into rotation.
 
-| | Left arm (left hand) | Right arm (right hand) |
-|---|---|---|
-| **+X / -X** | <kbd>W</kbd> / <kbd>S</kbd> | <kbd>U</kbd> / <kbd>J</kbd> |
-| **+Y / -Y** | <kbd>A</kbd> / <kbd>D</kbd> | <kbd>H</kbd> / <kbd>K</kbd> |
-| **+Z / -Z** | <kbd>R</kbd> / <kbd>F</kbd> | <kbd>O</kbd> / <kbd>L</kbd> |
-| **+Pitch / -Pitch** | <kbd>E</kbd> / <kbd>C</kbd> | <kbd>I</kbd> / <kbd>,</kbd> |
-| **+Yaw / -Yaw** | <kbd>Q</kbd> / <kbd>Z</kbd> | <kbd>Y</kbd> / <kbd>N</kbd> |
-| **+Roll / -Roll** | <kbd>T</kbd> / <kbd>B</kbd> | <kbd>P</kbd> / <kbd>/</kbd> |
-| **Gripper close** | <kbd>G</kbd> | <kbd>;</kbd> |
-| **Gripper open** | <kbd>V</kbd> | <kbd>.</kbd> |
-
-| Key | Action |
-|---|---|
-| <kbd>+</kbd> / <kbd>-</kbd> | Speed scale up / down (×1.25 per press, clamped to 0.1–10) |
-| <kbd>Backspace</kbd> | Reset both arms to their home pose |
+| Category | Keys | Alone | With <kbd>Shift</kbd> |
+|---|---|---|---|
+| Left arm | <kbd>W</kbd> / <kbd>S</kbd> | ±X | ±Pitch |
+|  | <kbd>A</kbd> / <kbd>D</kbd> | ±Y | ±Roll |
+|  | <kbd>R</kbd> / <kbd>F</kbd> | ±Z | ±Yaw |
+| Right arm | <kbd>I</kbd> / <kbd>K</kbd> | ±X | ±Pitch |
+|  | <kbd>J</kbd> / <kbd>L</kbd> | ±Y | ±Roll |
+|  | <kbd>Y</kbd> / <kbd>H</kbd> | ±Z | ±Yaw |
+| Left gripper | <kbd>C</kbd> / <kbd>X</kbd> | Open / close | |
+| Right gripper | <kbd>N</kbd> / <kbd>M</kbd> | Open / close | |
+| Control | <kbd>0</kbd> | Return both arms to their home pose | |
+|  | <kbd>Esc</kbd> | Disable / enable teleoperation | |
 
 Motion keys are **hold to move**: the target advances while the key is down and
-stops the moment it is released. Rotation is integrated in the **tool frame**,
-so roll, pitch and yaw stay relative to the gripper rather than the world.
+stops the moment it is released. Shift is momentary in the same way — the keys
+rotate only while it is down, and releasing it always returns to translation.
+Rotation is integrated in the **tool frame**, so roll, pitch and yaw stay
+relative to the gripper rather than the world.
 
-There is no arm/disarm and no stop key: releasing the keys *is* the stop, and a
-node nobody is touching publishes the pose it already holds. Keys only reach
-the robot while the browser page has focus, and losing focus releases
-everything held, so switching windows is itself safe.
+`0` walks both targets back to their home pose at the same `--linear-speed` and
+`--angular-speed` manual control uses, so the arms return at a speed the
+operator has already accepted rather than snapping back. Any motion key or
+gripper key cancels the return and hands control straight back, and Esc aborts
+it where the arms are. The grippers are left alone, so an arm carries what it
+is holding home instead of dropping it on the way.
+
+Esc is a safety toggle. Disabling teleoperation immediately stops every held
+control; after enabling it again, motion keys must be pressed again. Keys only
+reach the robot while the browser page has focus, and losing focus releases
+everything held.
 
 By default the page is only reachable from the node's own machine. To operate
 from another machine, pass `--host 0.0.0.0` and open `http://<node-host>:8080/`
@@ -63,14 +67,16 @@ no HTTPS).
 ## When the keys do nothing
 
 Check the page: is it open, does its header say *connected*, and does the tab
-actually have focus (click the page once)?
+actually have focus (click the page once)? If teleoperation was disabled with
+Esc, press Esc again to enable it, then hold a motion key. `0` is inert while
+teleoperation is disabled, like every other key.
 
 ## Interface
 
 | | |
 |---|---|
 | **Inputs** | `tick` — keep-alive only, any rate works (the node integrates and publishes at its own 500 Hz pace); `image` (optional) — JPEG frame to stream to the browser, e.g. a `camera_*` output of `dora-openarm-mujoco --render` |
-| **Outputs** | `pose_right`, `pose_left` `[{"pose": float32[8]}]` — `[px, py, pz, qw, qx, qy, qz, gripper_angle]` in the scene's `arm_origin` frame; `status` `string[1]` |
+| **Outputs** | `pose_right`, `pose_left` `[{"pose": float32[8]}]` — `[px, py, pz, qw, qx, qy, qz, gripper_angle]` in the scene's `arm_origin` frame; `command` `string[1]` — `lifter-stop`, sent once at shutdown so a physical lifter in the dataflow never keeps moving; `status` `string[1]` |
 
 ```
 --linear-speed   translation speed, m/s        (default: 0.05)
@@ -135,8 +141,10 @@ uv run dora build example/dataflow-mujoco.yaml --uv
 uv run dora run example/dataflow-mujoco.yaml --uv
 ```
 
-Then open <http://127.0.0.1:8080/> and click the page. The arms hold their
-startup pose until you press a key.
+Then open <http://127.0.0.1:8080/> and click the page, then hold a motion key.
+The arms hold their startup pose until you press a key. If a physical lifter is
+in the dataflow, connect the keyboard node's `command` output to its `command`
+input so it is stopped when the node exits.
 
 To record what you teleoperate, use `dataflow-keyboard-mujoco.yaml` in
 [`dora-openarm-data-collection`](https://github.com/enactic/dora-openarm-data-collection)

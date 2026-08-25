@@ -40,6 +40,10 @@ nodes:
     outputs:
       - pose_right
       - pose_left
+      # Optional: connect this to dora-openarm-lifter when a physical lifter
+      # is part of the dataflow. No key drives it, but the node emits a
+      # lifter-stop when it exits so the lifter never keeps moving.
+      - command
       - status
 
   - id: ik # differential IK: EE poses → joint angles

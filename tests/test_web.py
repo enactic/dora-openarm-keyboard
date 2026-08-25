@@ -41,16 +41,17 @@ def test_normalize_printable():
     assert _normalize_browser_key("+") == "+"
 
 
-def test_normalize_backspace():
-    assert _normalize_browser_key("Backspace") == "backspace"
-
-
 def test_normalize_unusable():
     assert _normalize_browser_key("ArrowUp") is None
-    assert _normalize_browser_key("Shift") is None
+    assert _normalize_browser_key("Backspace") is None
     assert _normalize_browser_key("") is None
     assert _normalize_browser_key(None) is None
     assert _normalize_browser_key(3) is None
+
+
+def test_normalize_teleop_controls():
+    assert _normalize_browser_key("Shift") == "shift"
+    assert _normalize_browser_key("Escape") == "escape"
 
 
 def _free_port() -> int:
@@ -123,6 +124,8 @@ async def _run_client(server, events, port):
         response = await session.get(f"http://127.0.0.1:{port}/teleop.js")
         script = await response.text()
         assert "keydown" in script
+        assert '"Shift"' in script
+        assert '"Escape"' in script
 
         pc = RTCPeerConnection(RTCConfiguration(iceServers=[]))
         try:
@@ -172,7 +175,7 @@ async def _run_client(server, events, port):
             assert received["frame"].height == 48
 
             await _wait_for(lambda: "help" in received)
-            assert "LEFT ARM (left hand)" in received["help"]
+            assert "Right arm" in received["help"]
         finally:
             await pc.close()
 

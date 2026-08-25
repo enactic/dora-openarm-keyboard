@@ -40,11 +40,18 @@ function send(type, key) {
   }
 }
 
-// Only forward keys the node can use: printable characters and Backspace.
-// Modifier chords (Cmd+R, Ctrl+W, …) pass through untouched.
+// Only forward keys the node can use: printable characters and the special
+// control keys used by the teleop mapping. Modifier chords (Cmd+R, Ctrl+W,
+// …) pass through untouched.
+//
+// Printable keys are lowercased here because Shift — the rotation modifier —
+// changes what the browser reports ("w" becomes "W"): a key pressed before
+// Shift and released after it would otherwise never leave `held`. The node
+// lowercases too, so this only keeps the on-screen list honest.
 function usableKey(event) {
   if (event.metaKey || event.ctrlKey || event.altKey) return null;
-  if (event.key.length === 1 || event.key === "Backspace") return event.key;
+  if (event.key.length === 1) return event.key.toLowerCase();
+  if (["Shift", "Escape"].includes(event.key)) return event.key;
   return null;
 }
 

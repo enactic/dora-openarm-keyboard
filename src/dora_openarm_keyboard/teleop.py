@@ -19,16 +19,24 @@ imports neither ``dora`` nor the WebRTC stack, so it can be exercised without
 a dataflow or a browser.  ``main`` supplies the events and publishes the
 results.
 
-Held keys are read as velocities: each ``step`` advances the target pose by
-``speed * scale * dt`` along every axis whose key is down.  Orientation is
-integrated in the **tool frame** (``r_new = r_cur * delta``), which keeps roll,
-pitch and yaw meaningful relative to the gripper rather than the world.
+Held keys are read as velocities: each ``step`` advances the target pose of
+the key's own arm by ``speed * dt`` along every axis whose key is down, so
+both arms can move at once.  Holding Shift makes the motion keys drive
+rotation instead of translation.  Orientation is integrated in the **tool
+frame** (``r_new = r_cur * delta``), which keeps roll, pitch and yaw
+meaningful relative to the gripper rather than the world.
 """
 
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from .keymap import ANGULAR, GRIP, KEYMAP, LEFT, LINEAR, RIGHT
+from .keymap import (
+    GRIP_KEYS,
+    LEFT,
+    MOTION_KEYS,
+    RIGHT,
+    ROTATION_KEY,
+)
 
 # End-effector pose of the scene's ``home`` keyframe, expressed in its
 # ``arm_origin`` site frame.  The IK and MuJoCo nodes both start from that same
@@ -44,9 +52,6 @@ DEFAULT_GRIP_SPEED = 2.0  # fraction/s
 
 DEFAULT_POS_MIN = np.array([-0.8, -0.8, -0.8], dtype=np.float64)
 DEFAULT_POS_MAX = np.array([0.8, 0.8, 0.8], dtype=np.float64)
-
-MIN_SPEED_SCALE = 0.1
-MAX_SPEED_SCALE = 10.0
 
 # Fully open gripper angle, mirrored between the arms.  Kept identical to
 # dora-openarm-vr so a dataflow can swap one teleoperation source for the other.
@@ -79,27 +84,60 @@ class KeyState:
         """Mark a key up."""
         self._held.discard(key)
 
+    def clear(self) -> None:
+        """Release every key currently held."""
+        self._held.clear()
+
 
 class ArmState:
     """Target pose of a single arm."""
 
     def __init__(self, home_pos: np.ndarray, home_rot: Rotation) -> None:
         """Start the arm at its home pose with the gripper fully open."""
-        self._home_pos = np.asarray(home_pos, dtype=np.float64).copy()
-        self._home_rot = home_rot
-        self.pos = self._home_pos.copy()
+        self.home_pos = np.asarray(home_pos, dtype=np.float64).copy()
+        self.home_rot = home_rot
+        self.pos = self.home_pos.copy()
         self.rot = home_rot
         self.grip = 0.0
 
-    def reset(self) -> None:
-        """Return this arm to its home pose and open the gripper."""
-        self.pos = self._home_pos.copy()
-        self.rot = self._home_rot
-        self.grip = 0.0
+    def step_home(self, max_distance: float, max_angle: float) -> bool:
+        """Move the target toward home by one bounded step.
+
+        Return whether the arm is now home.  The gripper is left where it is:
+        an arm that is holding something carries it home rather than dropping
+        it on the way.
+        """
+        at_home = True
+
+        offset = self.home_pos - self.pos
+        distance = float(np.linalg.norm(offset))
+        if distance <= max_distance:
+            self.pos = self.home_pos.copy()
+        else:
+            self.pos = self.pos + offset * (max_distance / distance)
+            at_home = False
+
+        # Integrated in the tool frame, like the manual rotation keys, so the
+        # target follows the same geodesic it would under manual control.
+        offset_rotvec = (self.rot.inv() * self.home_rot).as_rotvec()
+        angle = float(np.linalg.norm(offset_rotvec))
+        if angle <= max_angle:
+            self.rot = self.home_rot
+        else:
+            self.rot = self.rot * Rotation.from_rotvec(
+                offset_rotvec * (max_angle / angle)
+            )
+            at_home = False
+
+        return at_home
 
 
 class TeleopState:
-    """Integrates held keys into a pair of end-effector pose targets."""
+    """Integrates held keys into a pair of end-effector pose targets.
+
+    Every motion and gripper key names the arm it drives, so the two arms are
+    independent and can be moved at the same time.
+    """
 
     def __init__(
         self,
@@ -134,57 +172,72 @@ class TeleopState:
             RIGHT: ArmState(home_right, home_rotation),
             LEFT: ArmState(home_left, home_rotation),
         }
-        self.speed_scale = 1.0
+        self.enabled = True
+        self.homing = False
 
-    def scale_speed(self, factor: float) -> float:
-        """Multiply the speed scale, clamped, and return the new value."""
-        self.speed_scale = float(
-            np.clip(self.speed_scale * factor, MIN_SPEED_SCALE, MAX_SPEED_SCALE)
-        )
-        return self.speed_scale
+    def start_home(self) -> None:
+        """Begin walking both targets back to their home poses."""
+        self.homing = True
 
-    def reset(self) -> None:
-        """Return both arms to their home poses."""
-        for arm in self.arms.values():
-            arm.reset()
+    def cancel_home(self) -> None:
+        """Abort a home return, leaving both targets where they are."""
+        self.homing = False
+
+    def toggle_enabled(self) -> bool:
+        """Toggle teleoperation and return the resulting enabled state."""
+        self.enabled = not self.enabled
+        return self.enabled
 
     def step(self, dt: float, held_keys: set[str]) -> None:
         """Advance both targets by one timestep of the currently held keys."""
-        if dt <= 0.0:
+        if dt <= 0.0 or not self.enabled:
             return
 
+        if self.homing:
+            # A home return owns both targets and moves them at the same speed
+            # manual control would, so the arms come back at a speed the
+            # operator has already accepted.  Nothing is held while it runs:
+            # pressing a motion key cancels it and hands control straight back.
+            reached = [
+                arm.step_home(self.linear_speed * dt, self.angular_speed * dt)
+                for arm in self.arms.values()
+            ]
+            self.homing = not all(reached)
+            return
+
+        # Shift is momentary: the motion keys drive rotation only while it is
+        # down, so releasing it always returns to translation.
+        rotating = ROTATION_KEY in held_keys
         linear = {RIGHT: np.zeros(3), LEFT: np.zeros(3)}
         angular = {RIGHT: np.zeros(3), LEFT: np.zeros(3)}
         grip = {RIGHT: 0.0, LEFT: 0.0}
 
         for key in held_keys:
-            binding = KEYMAP.get(key)
-            if binding is None:
+            motion = MOTION_KEYS.get(key)
+            if motion is not None:
+                side, linear_axis, angular_axis, sign = motion
+                if rotating:
+                    angular[side][angular_axis] += sign
+                else:
+                    linear[side][linear_axis] += sign
                 continue
-            side, kind, axis, sign = binding
-            if kind == LINEAR:
-                linear[side][axis] += sign
-            elif kind == ANGULAR:
-                angular[side][axis] += sign
-            elif kind == GRIP:
+            gripper = GRIP_KEYS.get(key)
+            if gripper is not None:
+                side, sign = gripper
                 grip[side] += sign
 
         for side, arm in self.arms.items():
             arm.pos = np.clip(
-                arm.pos + linear[side] * self.linear_speed * self.speed_scale * dt,
+                arm.pos + linear[side] * self.linear_speed * dt,
                 self.pos_min,
                 self.pos_max,
             )
-            rotvec = angular[side] * self.angular_speed * self.speed_scale * dt
+            rotvec = angular[side] * self.angular_speed * dt
             if rotvec.any():
                 arm.rot = arm.rot * Rotation.from_rotvec(rotvec)
             if grip[side]:
                 arm.grip = float(
-                    np.clip(
-                        arm.grip + grip[side] * self.grip_speed * self.speed_scale * dt,
-                        0.0,
-                        1.0,
-                    )
+                    np.clip(arm.grip + grip[side] * self.grip_speed * dt, 0.0, 1.0)
                 )
 
     def pose(self, side: str) -> np.ndarray:
@@ -207,7 +260,7 @@ class TeleopState:
 
     def describe(self) -> str:
         """One-line summary of the current state, for status logging."""
-        parts = [f"scale={self.speed_scale:.2f}"]
+        parts = [f"enabled={self.enabled}", f"homing={self.homing}"]
         for side in (RIGHT, LEFT):
             arm = self.arms[side]
             roll, pitch, yaw = arm.rot.as_euler("xyz", degrees=True)

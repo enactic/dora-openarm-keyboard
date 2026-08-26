@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Keyboard teleoperation from a web browser, with no VR headset and no real
-# OpenArm: the keyboard node serves a page (http://127.0.0.1:8080/ by default)
-# that captures keys over a WebRTC data channel and shows the MuJoCo camera as
-# WebRTC video. keyboard -> end-effector pose targets -> IK -> joint angles ->
-# MuJoCo, and MuJoCo's camera back to the browser. The arms move only while a
-# motion key is held and the page has focus.
+# Keyboard teleoperation of a real dual-arm OpenArm cell from a web browser,
+# with no VR headset: the keyboard node serves a page (http://127.0.0.1:8080/
+# by default) that captures keys over a WebRTC data channel and shows the
+# ceiling camera as WebRTC video. keyboard -> end-effector pose targets ->
+# IK -> joint angles -> the follower arms, and the ceiling camera back to the
+# browser. The arms move only while a motion key is held and the page has
+# focus.
 
 nodes:
   - id: quittable-tick-camera
@@ -57,6 +58,7 @@ nodes:
       - position_right
       - status
 
+  - id: follower-right
     build: pip install dora-openarm
     path: dora-openarm
     args: "--side right --start-on-startup"

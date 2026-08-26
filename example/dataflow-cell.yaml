@@ -80,7 +80,6 @@ nodes:
       # Event ID is only used. Event value isn't used.
       request_state: ik/position_right
       move_position: ik/position_right
-      command: ui/arm_command
     outputs:
       - state
       - status
@@ -92,7 +91,6 @@ nodes:
     inputs:
       request_state: ik/position_left
       move_position: ik/position_left
-      command: ui/arm_command
     outputs:
       - state
       - status
@@ -108,6 +106,6 @@ nodes:
       IMAGE_WIDTH: 960
       JPEG_QUALITY: 90
     inputs:
-      tick: quittable-tick-camera/tick
+      tick: tick/tick
     outputs:
       - image

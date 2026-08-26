@@ -183,11 +183,6 @@ class TeleopState:
         """Abort a home return, leaving both targets where they are."""
         self.homing = False
 
-    def toggle_enabled(self) -> bool:
-        """Toggle teleoperation and return the resulting enabled state."""
-        self.enabled = not self.enabled
-        return self.enabled
-
     def step(self, dt: float, held_keys: set[str]) -> None:
         """Advance both targets by one timestep of the currently held keys."""
         if dt <= 0.0 or not self.enabled:

@@ -55,8 +55,8 @@ from .keymap import (
     HOME_KEY,
     LEFT,
     LIFTER_STOP_COMMAND,
+    QUIT_KEY,
     RIGHT,
-    TOGGLE_KEY,
     drives_motion,
 )
 from .teleop import (
@@ -82,7 +82,7 @@ _STEP_SECONDS = 0.002
 _MAX_DT = 0.1
 
 # Edge-triggered keys, handled on press instead of being held.
-_CONTROL_KEYS = frozenset((TOGGLE_KEY, HOME_KEY))
+_CONTROL_KEYS = frozenset((QUIT_KEY, HOME_KEY))
 
 
 def build_pose_output(pose: np.ndarray) -> pa.Array:
@@ -103,6 +103,8 @@ class KeyboardTeleop:
         self._command: str | None = None
         # Cleared by the dora loop to let the integrator task finish cleanly.
         self.running = True
+        # Set by Esc; the dora loop exits once it turns True.
+        self.quit_requested = False
 
     # WebRTC handlers
 
@@ -141,17 +143,17 @@ class KeyboardTeleop:
                 self._handle_control(name)
 
     def _handle_control(self, name: str) -> None:
-        if name == TOGGLE_KEY:
-            enabled = self.state.toggle_enabled()
-            if not enabled:
-                # Esc is the abort for a home return too, so it always stops
-                # the arms wherever they are.
-                self.state.cancel_home()
-                self.keys.clear()
-            self._note("teleop enabled" if enabled else "teleop disabled")
+        if name == QUIT_KEY:
+            # Esc ends the session.  Teleoperation is disabled on the spot so
+            # nothing moves the arms during the steps left before shutdown.
+            self.quit_requested = True
+            self.state.enabled = False
+            self.state.cancel_home()
+            self.keys.clear()
+            self._note("quitting")
         elif name == HOME_KEY:
             # Like every other key, this one is inert while teleoperation is
-            # disabled: Esc has to mean that nothing moves the arms.
+            # disabled: after Esc nothing may move the arms.
             if self.state.enabled:
                 self.state.start_home()
                 # The home return drives the targets on its own; a held key
@@ -242,8 +244,9 @@ async def _run_async(args: argparse.Namespace) -> None:
         # In WebRTC-only mode the one browser that left can never be replaced
         # (there is no HTTP server), so the server stops running when it
         # disconnects and this loop ends instead of publishing poses to
-        # nobody forever.
-        while server.running:
+        # nobody forever.  Esc requests a quit the same way: the whole node
+        # shuts down rather than pausing.
+        while server.running and not teleop.quit_requested:
             # Poll instead of blocking on the dora iterator: while no event is
             # waiting, the sleep hands the loop to the other tasks (WebRTC and
             # the integrator), which would all stall behind a blocking next().

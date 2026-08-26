@@ -75,7 +75,7 @@ nodes:
   - id: follower-right
     build: pip install dora-openarm
     path: dora-openarm
-    args: "--side right " # --config openarm_pedestal
+    args: "--side right --start-on-startup" # --config openarm_pedestal
     inputs:
       # Event ID is only used. Event value isn't used.
       request_state: ik/position_right
@@ -87,7 +87,7 @@ nodes:
   - id: follower-left
     build: pip install dora-openarm
     path: dora-openarm
-    args: "--side left " # --config openarm_pedestal
+    args: "--side left --start-on-startup" # --config openarm_pedestal
     inputs:
       request_state: ik/position_left
       move_position: ik/position_left

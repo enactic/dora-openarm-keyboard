@@ -55,9 +55,11 @@ are left alone, so an arm carries what it is holding home instead of dropping
 it on the way.
 
 Esc quits. Every held control stops immediately — a home return too, so the
-arms stay where they are — and the node shuts down, sending `lifter-stop` on
-the way out. Keys only reach the robot while the browser page has focus, and
-losing focus releases everything held.
+arms stay where they are — and the node shuts down, sending `lifter-stop` and
+then `quit` on the way out; wired into a `dora-openarm-quitter` tick node's
+`command` input (as in the example dataflows), the `quit` stops the timers so
+the whole dataflow comes down. Keys only reach the robot while the browser
+page has focus, and losing focus releases everything held.
 
 By default the page is only reachable from the node's own machine. To operate
 from another machine, pass `--host 0.0.0.0` and open `http://<node-host>:8080/`
@@ -75,7 +77,7 @@ quit and the dataflow must be started again.
 | | |
 |---|---|
 | **Inputs** | `tick` — keep-alive only, any rate works (the node integrates and publishes at its own 500 Hz pace); `image` (optional) — JPEG frame to stream to the browser, e.g. a `camera_*` output of `dora-openarm-mujoco --render` |
-| **Outputs** | `pose_right`, `pose_left` `[{"pose": float32[8]}]` — `[px, py, pz, qw, qx, qy, qz, gripper_angle]` in the scene's `arm_origin` frame; `command` `string[1]` — `lifter-stop`, sent once at shutdown so a physical lifter in the dataflow never keeps moving; `status` `string[1]` |
+| **Outputs** | `pose_right`, `pose_left` `[{"pose": float32[8]}]` — `[px, py, pz, qw, qx, qy, qz, gripper_angle]` in the scene's `arm_origin` frame; `command` `string[1]` — sent at shutdown: `lifter-stop` so a physical lifter in the dataflow never keeps moving, then `quit` so `dora-openarm-quitter` tick nodes exit and the dataflow can finish; `status` `string[1]` |
 
 ```
 --linear-speed   translation speed, m/s        (default: 0.05)

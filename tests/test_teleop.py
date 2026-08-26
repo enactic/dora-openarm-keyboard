@@ -246,11 +246,14 @@ def test_home_key_does_nothing_after_escape_quits():
     np.testing.assert_allclose(state.arms[LEFT].pos, np.zeros(3))
 
 
-def test_disable_stops_a_lifter_in_the_dataflow():
+def test_disable_stops_a_lifter_and_quits_the_tick_nodes():
     teleop = KeyboardTeleop(make_state())
 
     assert teleop.take_command() is None
 
     teleop.disable()
+    # The lifter stop goes first; the quit then lets the quittable tick nodes
+    # exit so the whole dataflow can come down.
     assert teleop.take_command() == "lifter-stop"
+    assert teleop.take_command() == "quit"
     assert teleop.take_command() is None

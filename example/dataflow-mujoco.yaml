@@ -23,7 +23,6 @@ nodes:
   - id: keyboard # browser keys → EE pose targets, camera → browser
     build: pip install -e ..
     path: dora-openarm-keyboard
-    args: "--linear-speed 0.05 --angular-speed 0.5"
     inputs:
       # Any camera_* output of the viewer works here; ceiling gives the best
       # overview of both arms.
@@ -31,8 +30,8 @@ nodes:
     outputs:
       - pose_right
       - pose_left
-      # Optional: connect this to dora-openarm-lifter when a physical lifter
-      # is part of the dataflow. No key drives it, but the node emits a
+      # ptional: connect this to dora-openarm-lifter when a physical lifter
+      # is part of the dataflow No key drives it, but the node emits a
       # lifter-stop when it exits so the lifter never keeps moving.
       - command
       - status
@@ -40,7 +39,6 @@ nodes:
   - id: ik # differential IK: EE poses → joint angles
     build: pip install dora-openarm-kinematics
     path: dora-openarm-ik
-    args: "--mode bimanual --max-iters 10 --dt 0.1 --damping 0.1 --posture-cost 0.01 --lm-damping 0.01"
     inputs:
       # The solver runs on each target, not on the tick.
       target_right: keyboard/pose_right

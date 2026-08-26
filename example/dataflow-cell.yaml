@@ -73,7 +73,7 @@ nodes:
 
 
   - id: follower-right
-    build: pip install -e nodes/dora-openarm
+    build: pip install dora-openarm
     path: dora-openarm
     args: "--side right " # --config openarm_pedestal
     inputs:
@@ -86,7 +86,7 @@ nodes:
       - status
 
   - id: follower-left
-    build: pip install -e nodes/dora-openarm
+    build: pip install dora-openarm
     path: dora-openarm
     args: "--side left " # --config openarm_pedestal
     inputs:

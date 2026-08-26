@@ -1,0 +1,113 @@
+# Copyright 2026 Enactic, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Keyboard teleoperation from a web browser, with no VR headset and no real
+# OpenArm: the keyboard node serves a page (http://127.0.0.1:8080/ by default)
+# that captures keys over a WebRTC data channel and shows the MuJoCo camera as
+# WebRTC video. keyboard -> end-effector pose targets -> IK -> joint angles ->
+# MuJoCo, and MuJoCo's camera back to the browser. The arms move only while a
+# motion key is held and the page has focus.
+
+nodes:
+  - id: tick # tick (1 Hz keep-alive), quittable
+    build: pip install dora-openarm-quitter
+    path: dora-openarm-quitter
+    inputs:
+      tick: dora/timer/secs/1
+    outputs:
+      - tick
+
+  - id: keyboard # browser keys → EE pose targets, camera → browser
+    build: pip install -e ..
+    path: dora-openarm-keyboard
+    args: "--linear-speed 0.05 --angular-speed 0.5"
+    inputs:
+      tick: tick/tick
+      # Any camera_* output of the viewer works here; ceiling gives the best
+      # overview of both arms.
+      image: camera-ceiling/image
+    outputs:
+      - pose_right
+      - pose_left
+      # Optional: connect this to dora-openarm-lifter when a physical lifter
+      # is part of the dataflow. No key drives it, but the node emits a
+      # lifter-stop when it exits so the lifter never keeps moving.
+      - command
+      - status
+
+  - id: ik # differential IK: EE poses → joint angles
+    build: pip install dora-openarm-kinematics
+    path: dora-openarm-ik
+    args: "--mode bimanual --max-iters 10 --dt 0.1 --damping 0.1 --posture-cost 0.01 --lm-damping 0.01"
+    inputs:
+      # The solver runs on each target, not on the tick.
+      target_right: keyboard/pose_right
+      target_left: keyboard/pose_left
+    outputs:
+      - position_left
+      - position_right
+      - status
+
+  - id: mujoco # MuJoCo scene, rendered offscreen for the browser
+    build: pip install dora-openarm-mujoco
+    path: dora-openarm-mujoco
+    args: "--keyframe home --viewer --debug-frame"
+    inputs:
+      position_right: ik/position_right
+      position_left: ik/position_left
+      pose_right: keyboard/pose_right
+      pose_left: keyboard/pose_left
+    outputs:
+      - status
+
+
+  - id: follower-right
+    build: pip install -e nodes/dora-openarm
+    path: dora-openarm
+    args: "--side right " # --config openarm_pedestal
+    inputs:
+      # Event ID is only used. Event value isn't used.
+      request_state: ik/position_right
+      move_position: ik/position_right
+      command: ui/arm_command
+    outputs:
+      - state
+      - status
+
+  - id: follower-left
+    build: pip install -e nodes/dora-openarm
+    path: dora-openarm
+    args: "--side left " # --config openarm_pedestal
+    inputs:
+      request_state: ik/position_left
+      move_position: ik/position_left
+      command: ui/arm_command
+    outputs:
+      - state
+      - status
+
+  - id: camera-ceiling
+    build: pip install opencv-video-capture
+    path: opencv-video-capture
+    env:
+      # Please configure!
+      CAPTURE_PATH: "/dev/camera_ceiling"
+      ENCODING: "jpeg"
+      IMAGE_HEIGHT: 600
+      IMAGE_WIDTH: 960
+      JPEG_QUALITY: 90
+    inputs:
+      tick: quittable-tick-camera/tick
+    outputs:
+      - image

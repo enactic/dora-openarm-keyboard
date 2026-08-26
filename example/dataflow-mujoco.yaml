@@ -20,20 +20,11 @@
 # motion key is held and the page has focus.
 
 nodes:
-  - id: tick # tick (1 Hz keep-alive), quittable
-    build: pip install dora-openarm-quitter
-    path: dora-openarm-quitter
-    inputs:
-      tick: dora/timer/secs/1
-    outputs:
-      - tick
-
   - id: keyboard # browser keys → EE pose targets, camera → browser
     build: pip install -e ..
     path: dora-openarm-keyboard
     args: "--linear-speed 0.05 --angular-speed 0.5"
     inputs:
-      tick: tick/tick
       # Any camera_* output of the viewer works here; ceiling gives the best
       # overview of both arms.
       image: viewer/camera_ceiling

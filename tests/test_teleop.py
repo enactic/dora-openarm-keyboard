@@ -125,7 +125,7 @@ def test_gripper_keys_close_and_open_their_own_arm():
 
 def test_disable_stops_motion():
     state = make_state()
-    state.toggle_enabled()
+    state.enabled = False
 
     state.step(1.0, {"w", "i"})
 
@@ -133,21 +133,23 @@ def test_disable_stops_motion():
     np.testing.assert_allclose(state.arms[LEFT].pos, np.zeros(3))
 
 
-def test_escape_toggles_teleop_and_drops_keys_held_while_disabled():
+def test_escape_requests_quit_and_stops_the_arms():
     teleop = KeyboardTeleop(make_state())
 
     teleop.enqueue("press", "w")
     teleop.enqueue("press", "escape")
     teleop.step(1.0)
+    assert teleop.quit_requested
     assert not teleop.state.enabled
     np.testing.assert_allclose(teleop.state.arms[LEFT].pos, np.zeros(3))
 
+    # Esc quits rather than toggles: another press must not re-enable teleop.
     teleop.enqueue("release", "escape")
     teleop.enqueue("press", "escape")
-    teleop.step(0.0)
-    assert teleop.state.enabled
-    # W was released server-side by the disable, so it must be pressed again.
+    teleop.enqueue("press", "w")
     teleop.step(1.0)
+    assert teleop.quit_requested
+    assert not teleop.state.enabled
     np.testing.assert_allclose(teleop.state.arms[LEFT].pos, np.zeros(3))
 
 
@@ -214,7 +216,7 @@ def test_a_motion_key_cancels_the_home_return():
     np.testing.assert_allclose(state.arms[LEFT].pos, [3.5, 0.0, 0.0])
 
 
-def test_escape_aborts_the_home_return_where_the_arms_are():
+def test_escape_stops_a_home_return_where_the_arms_are():
     teleop = KeyboardTeleop(make_state(home_left=np.array([5.0, 0.0, 0.0])))
     state = teleop.state
     state.arms[LEFT].pos = np.zeros(3)
@@ -226,12 +228,12 @@ def test_escape_aborts_the_home_return_where_the_arms_are():
 
     teleop.enqueue("press", "escape")
     teleop.step(1.0)
+    assert teleop.quit_requested
     assert not state.homing
-    assert not state.enabled
     np.testing.assert_allclose(state.arms[LEFT].pos, [1.0, 0.0, 0.0])
 
 
-def test_home_key_does_nothing_while_teleop_is_disabled():
+def test_home_key_does_nothing_after_escape_quits():
     teleop = KeyboardTeleop(make_state(home_left=np.array([1.0, 2.0, 3.0])))
     state = teleop.state
     state.arms[LEFT].pos = np.zeros(3)
@@ -240,7 +242,6 @@ def test_home_key_does_nothing_while_teleop_is_disabled():
     teleop.enqueue("press", "0")
     teleop.step(1.0)
 
-    assert not state.enabled
     assert not state.homing
     np.testing.assert_allclose(state.arms[LEFT].pos, np.zeros(3))
 

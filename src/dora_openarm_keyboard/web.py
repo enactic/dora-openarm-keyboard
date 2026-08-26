@@ -62,7 +62,7 @@ from aiortc import (
 )
 from aiortc.mediastreams import VideoStreamTrack
 
-from .keymap import HELP_TEXT, ROTATION_KEY, TOGGLE_KEY
+from .keymap import HELP_TEXT, QUIT_KEY, ROTATION_KEY
 
 # RTP video clock; pts for outgoing frames are expressed in this rate.
 _CLOCK_RATE = 90_000
@@ -85,7 +85,7 @@ def _normalize_browser_key(key: object) -> str | None:
         return key.lower()
     special_keys = {
         "shift": ROTATION_KEY,
-        "escape": TOGGLE_KEY,
+        "escape": QUIT_KEY,
     }
     special = special_keys.get(key.lower())
     if special is not None:

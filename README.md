@@ -39,7 +39,7 @@ to select first. Holding <kbd>Shift</kbd> turns the same keys into rotation.
 | Left gripper | <kbd>C</kbd> / <kbd>X</kbd> | Open / close | |
 | Right gripper | <kbd>N</kbd> / <kbd>M</kbd> | Open / close | |
 | Control | <kbd>0</kbd> | Return both arms to their home pose | |
-|  | <kbd>Esc</kbd> | Disable / enable teleoperation | |
+|  | <kbd>Esc</kbd> | Quit teleoperation | |
 
 Motion keys are **hold to move**: the target advances while the key is down and
 stops the moment it is released. Shift is momentary in the same way — the keys
@@ -50,14 +50,14 @@ relative to the gripper rather than the world.
 `0` walks both targets back to their home pose at the same `--linear-speed` and
 `--angular-speed` manual control uses, so the arms return at a speed the
 operator has already accepted rather than snapping back. Any motion key or
-gripper key cancels the return and hands control straight back, and Esc aborts
-it where the arms are. The grippers are left alone, so an arm carries what it
-is holding home instead of dropping it on the way.
+gripper key cancels the return and hands control straight back. The grippers
+are left alone, so an arm carries what it is holding home instead of dropping
+it on the way.
 
-Esc is a safety toggle. Disabling teleoperation immediately stops every held
-control; after enabling it again, motion keys must be pressed again. Keys only
-reach the robot while the browser page has focus, and losing focus releases
-everything held.
+Esc quits. Every held control stops immediately — a home return too, so the
+arms stay where they are — and the node shuts down, sending `lifter-stop` on
+the way out. Keys only reach the robot while the browser page has focus, and
+losing focus releases everything held.
 
 By default the page is only reachable from the node's own machine. To operate
 from another machine, pass `--host 0.0.0.0` and open `http://<node-host>:8080/`
@@ -67,9 +67,8 @@ no HTTPS).
 ## When the keys do nothing
 
 Check the page: is it open, does its header say *connected*, and does the tab
-actually have focus (click the page once)? If teleoperation was disabled with
-Esc, press Esc again to enable it, then hold a motion key. `0` is inert while
-teleoperation is disabled, like every other key.
+actually have focus (click the page once)? If Esc was pressed, the node has
+quit and the dataflow must be started again.
 
 ## Interface
 

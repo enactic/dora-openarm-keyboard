@@ -60,7 +60,7 @@ GRIP_KEYS: dict[str, tuple[str, int]] = {
 ROTATION_KEY = "shift"
 # Edge-triggered controls.
 HOME_KEY = "0"
-TOGGLE_KEY = "escape"
+QUIT_KEY = "escape"
 
 
 def drives_motion(key: str) -> bool:
@@ -99,6 +99,6 @@ Right gripper
 
 Control
 -------
-  0          Return both arms home; any motion key or Esc aborts
-  Esc        Disable / enable teleoperation\
+  0          Return both arms home; any motion key aborts
+  Esc        Quit teleoperation\
 """

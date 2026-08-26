@@ -71,6 +71,9 @@ def drives_motion(key: str) -> bool:
 # No key drives the shared lifter, but a dataflow with a physical one still
 # needs it stopped when the node exits.
 LIFTER_STOP_COMMAND = "lifter-stop"
+# Makes every dora-openarm-quitter tick node with this node's command output
+# wired in exit too, so the dataflow's timers stop and it can shut down.
+QUIT_COMMAND = "quit"
 
 HELP_TEXT = """\
 Left arm

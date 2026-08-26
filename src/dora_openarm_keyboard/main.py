@@ -21,8 +21,10 @@ output contract as dora-openarm-vr so either can feed dora-openarm-ik:
       [px, py, pz, qw, qx, qy, qz, gripper_angle] in the scene's ``arm_origin``
       frame.
   command : string[1]
-      ``lifter-stop``, sent once when the node shuts down so a physical lifter
-      in the dataflow never keeps moving.
+      Sent at shutdown: ``lifter-stop`` so a physical lifter in the dataflow
+      never keeps moving, then ``quit`` so dora-openarm-quitter tick nodes
+      with this output wired into their ``command`` input exit and let the
+      dataflow finish.
   status : string[1]
 
 Keys come from a browser page the node itself serves: they travel over a WebRTC
@@ -55,6 +57,7 @@ from .keymap import (
     HOME_KEY,
     LEFT,
     LIFTER_STOP_COMMAND,
+    QUIT_COMMAND,
     QUIT_KEY,
     RIGHT,
     drives_motion,
@@ -100,7 +103,7 @@ class KeyboardTeleop:
         self.events: queue.SimpleQueue = queue.SimpleQueue()
         self._control_down: set[str] = set()
         self._status: str | None = None
-        self._command: str | None = None
+        self._commands: list[str] = []
         # Cleared by the dora loop to let the integrator task finish cleanly.
         self.running = True
         # Set by Esc; the dora loop exits once it turns True.
@@ -179,16 +182,19 @@ class KeyboardTeleop:
             self._note("home pose reached")
 
     def take_command(self) -> str | None:
-        """Return and clear a newly requested shared-lifter command."""
-        command, self._command = self._command, None
-        return command
+        """Return the next queued command, oldest first, or None."""
+        if self._commands:
+            return self._commands.pop(0)
+        return None
 
     def disable(self) -> None:
-        """Stop all controls and queue a shared-lifter stop command."""
+        """Stop all controls and queue the shutdown commands."""
         self.state.enabled = False
         self.state.cancel_home()
         self.keys.clear()
-        self._command = LIFTER_STOP_COMMAND
+        # The lifter stop goes first; the quit then lets the quittable tick
+        # nodes exit so the dataflow's timers stop with this node.
+        self._commands += [LIFTER_STOP_COMMAND, QUIT_COMMAND]
 
 
 def _extract_jpeg(value: pa.Array) -> bytes:
@@ -296,13 +302,12 @@ async def _integrate(
             if command is not None:
                 node.send_output("command", pa.array([command]), metadata)
     finally:
-        # A graceful node shutdown must not leave a physical lifter moving.
+        # A graceful node shutdown must not leave a physical lifter moving,
+        # and the quittable tick nodes must exit or the dataflow never stops.
         teleop.disable()
-        node.send_output(
-            "command",
-            pa.array([teleop.take_command()]),
-            {"timestamp": time.time_ns()},
-        )
+        metadata = {"timestamp": time.time_ns()}
+        while (command := teleop.take_command()) is not None:
+            node.send_output("command", pa.array([command]), metadata)
 
 
 def _default_answer_port() -> int | None:

@@ -20,18 +20,11 @@
 # motion key is held and the page has focus.
 
 nodes:
-  - id: tick # tick (1 Hz keep-alive), quittable
-    build: pip install dora-openarm-quitter
-    path: dora-openarm-quitter
-    inputs:
-      tick: dora/timer/secs/1
-    outputs:
-      - tick
-
   - id: quittable-tick-camera
     build: pip install dora-openarm-quitter
     path: dora-openarm-quitter
     inputs:
+      command: keyboard/command
       tick: dora/timer/millis/33  # ~30 fps
     outputs:
       - tick
@@ -39,25 +32,22 @@ nodes:
   - id: keyboard # browser keys → EE pose targets, camera → browser
     build: pip install -e ..
     path: dora-openarm-keyboard
-    args: "--linear-speed 0.05 --angular-speed 0.5"
     inputs:
-      tick: tick/tick
       # Any camera_* output of the viewer works here; ceiling gives the best
       # overview of both arms.
       image: camera-ceiling/image
     outputs:
       - pose_right
       - pose_left
-      # Optional: connect this to dora-openarm-lifter when a physical lifter
-      # is part of the dataflow. No key drives it, but the node emits a
-      # lifter-stop when it exits so the lifter never keeps moving.
+      # Drives the quittable tick nodes' shutdown (quit) and, when a physical
+      # lifter is part of the dataflow, dora-openarm-lifter (lifter-stop on
+      # exit so the lifter never keeps moving).
       - command
       - status
 
   - id: ik # differential IK: EE poses → joint angles
     build: pip install dora-openarm-kinematics
     path: dora-openarm-ik
-    args: "--mode bimanual --max-iters 10 --dt 0.1 --damping 0.1 --posture-cost 0.01 --lm-damping 0.01"
     inputs:
       # The solver runs on each target, not on the tick.
       target_right: keyboard/pose_right
@@ -67,40 +57,21 @@ nodes:
       - position_right
       - status
 
-  - id: mujoco # MuJoCo scene, rendered offscreen for the browser
-    build: pip install dora-openarm-mujoco
-    path: dora-openarm-mujoco
-    args: "--keyframe home --viewer --debug-frame"
-    inputs:
-      position_right: ik/position_right
-      position_left: ik/position_left
-      pose_right: keyboard/pose_right
-      pose_left: keyboard/pose_left
-    outputs:
-      - status
-
-
-  - id: follower-right
     build: pip install dora-openarm
     path: dora-openarm
-    args: "--side right --start-on-startup" # --config openarm_pedestal
+    args: "--side right --start-on-startup"
     inputs:
-      # Event ID is only used. Event value isn't used.
-      request_state: ik/position_right
       move_position: ik/position_right
     outputs:
-      - state
       - status
 
   - id: follower-left
     build: pip install dora-openarm
     path: dora-openarm
-    args: "--side left --start-on-startup" # --config openarm_pedestal
+    args: "--side left --start-on-startup"
     inputs:
-      request_state: ik/position_left
       move_position: ik/position_left
     outputs:
-      - state
       - status
 
   - id: camera-ceiling

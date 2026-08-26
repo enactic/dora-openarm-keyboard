@@ -28,6 +28,14 @@ nodes:
     outputs:
       - tick
 
+  - id: quittable-tick-camera
+    build: pip install dora-openarm-quitter
+    path: dora-openarm-quitter
+    inputs:
+      tick: dora/timer/millis/33  # ~30 fps
+    outputs:
+      - tick
+
   - id: keyboard # browser keys → EE pose targets, camera → browser
     build: pip install -e ..
     path: dora-openarm-keyboard
@@ -106,6 +114,6 @@ nodes:
       IMAGE_WIDTH: 960
       JPEG_QUALITY: 90
     inputs:
-      tick: tick/tick
+      tick: quittable-tick-camera/tick
     outputs:
       - image

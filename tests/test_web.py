@@ -197,17 +197,20 @@ async def _run_tablet_fetches(server, port):
     try:
         async with aiohttp.ClientSession() as session:
             # Without the trailing slash, the page's relative references
-            # would resolve outside its directory.
-            response = await session.get(f"{base}/tablet", allow_redirects=False)
-            assert response.status == 302
-            assert response.headers["Location"] == "/tablet/"
+            # would resolve outside its directory.  The location is relative
+            # so the redirect still lands inside the directory when a reverse
+            # proxy mounts the node under a prefix.
+            async with session.get(f"{base}/tablet", allow_redirects=False) as response:
+                assert response.status == 302
+                assert response.headers["Location"] == "tablet/"
 
-            response = await session.get(f"{base}/tablet/")
-            assert response.status == 200
-            assert response.content_type == "text/html"
-            page = await response.text()
-            assert 'id="stick-left"' in page
-            assert 'src="ui.js"' in page
+            async with session.get(f"{base}/tablet") as response:
+                assert str(response.url) == f"{base}/tablet/"
+                assert response.status == 200
+                assert response.content_type == "text/html"
+                page = await response.text()
+                assert 'id="stick-left"' in page
+                assert 'src="ui.js"' in page
 
             scripts = (
                 "app.js",
@@ -218,24 +221,24 @@ async def _run_tablet_fetches(server, port):
                 "widgets.js",
             )
             for name in scripts:
-                response = await session.get(f"{base}/tablet/{name}")
-                assert response.status == 200, name
-                assert response.content_type == "text/javascript", name
+                async with session.get(f"{base}/tablet/{name}") as response:
+                    assert response.status == 200, name
+                    assert response.content_type == "text/javascript", name
 
-            response = await session.get(f"{base}/tablet/style.css")
-            assert response.status == 200
-            assert response.content_type == "text/css"
+            async with session.get(f"{base}/tablet/style.css") as response:
+                assert response.status == 200
+                assert response.content_type == "text/css"
 
             # The page negotiates through the node's own /offer, one level up.
-            response = await session.get(f"{base}/tablet/app.js")
-            assert '"../offer"' in await response.text()
+            async with session.get(f"{base}/tablet/app.js") as response:
+                assert '"../offer"' in await response.text()
 
-            response = await session.get(f"{base}/tablet/missing.js")
-            assert response.status == 404
+            async with session.get(f"{base}/tablet/missing.js") as response:
+                assert response.status == 404
 
             # The keyboard page is untouched.
-            response = await session.get(f"{base}/")
-            assert "teleop.js" in await response.text()
+            async with session.get(f"{base}/") as response:
+                assert "teleop.js" in await response.text()
     finally:
         await server.stop()
 

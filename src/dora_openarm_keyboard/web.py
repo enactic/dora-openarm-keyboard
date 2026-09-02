@@ -258,8 +258,11 @@ class WebTeleopServer:
 
     async def _handle_tablet_redirect(self, request: aioweb.Request) -> aioweb.Response:
         # The page references its assets relatively, which only resolves inside
-        # the directory when the URL ends with a slash.
-        raise aioweb.HTTPFound("/tablet/")
+        # the directory when the URL ends with a slash.  The location is
+        # relative too, so the redirect survives a reverse proxy that mounts
+        # the node under a prefix — the same reason the page fetches
+        # ``../offer`` rather than ``/offer``.
+        raise aioweb.HTTPFound("tablet/")
 
     async def _handle_tablet_index(self, request: aioweb.Request) -> aioweb.Response:
         return aioweb.Response(

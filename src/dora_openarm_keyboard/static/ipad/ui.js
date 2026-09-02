@@ -44,7 +44,7 @@ const CAP_TRAVEL = 0.8;
 const DEFAULT_PRESET = 0.5;
 
 // The node's gripper speed in fraction/s at full duty. Must match the
-// node's --grip-speed (dora-openarm-keyboard's DEFAULT_GRIP_SPEED is 2.0);
+// node's --grip-speed (DEFAULT_GRIP_SPEED in teleop.py is 2.0);
 // the follower's estimate drifts by the ratio otherwise, until the next full
 // open or close resyncs it.
 const GRIP_SPEED = 2.0;

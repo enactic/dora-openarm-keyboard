@@ -63,8 +63,8 @@ export function connect({
   pc.addTransceiver("video", { direction: "recvonly" });
 
   // The key bindings arrive over a "help" data channel the node opens, not
-  // over HTTP: the help text lives in the node's keymap, and this page is
-  // served by a different process that has no copy of it.
+  // over HTTP: the help text lives in the node's keymap, and this page may
+  // be served by a different host that has no copy of it.
   pc.ondatachannel = (event) => {
     if (event.channel.label !== "help") return;
     event.channel.onmessage = (message) => onHelp(message.data);
@@ -133,9 +133,10 @@ function iceGathered(pc) {
 }
 
 async function signalingError(response) {
-  // Our proxy answers 502 with {"error": "..."} when it cannot reach the
-  // node; that sentence names the address it tried, which is the one thing
-  // worth putting on the HUD.
+  // The node's own /offer only ever fails with a bare status code. A
+  // signaling broker in front of it (WebRTC-only mode) may answer with
+  // {"error": "..."} instead; that sentence is the one thing worth putting
+  // on the HUD when it exists.
   try {
     const body = await response.json();
     if (body && body.error) return String(body.error);

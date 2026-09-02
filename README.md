@@ -117,9 +117,10 @@ dropped link.
 
 ## When the keys do nothing
 
-Check the page: is it open, does its header say *connected*, and does the tab
-actually have focus (click the page once)? If Esc was pressed, the node has
-quit and the dataflow must be started again.
+Check the page: is it open, does its header say *connected* (the touch HUD's
+status pill says *Online*), and does the tab actually have focus (click the
+page once)? If Esc was pressed, the node has quit and the dataflow must be
+started again.
 
 ## Interface
 

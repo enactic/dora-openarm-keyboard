@@ -14,7 +14,7 @@
 
 // Pure control-mapping logic: no DOM, no WebRTC, so `node --test` can
 // exercise it directly. ui.js turns pointer events into calls here; the
-// resulting keydown/keyup events speak dora-openarm-keyboard's keymap.
+// resulting keydown/keyup events speak the node's keymap (keymap.py).
 
 export const KEYMAP = {
   leftStick: { up: "w", down: "s", left: "a", right: "d" },

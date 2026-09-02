@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-/* OpenArm teleop HUD — instrument style.
+/* OpenArm teleop touch controls — instrument style.
  *
  * Two ideas carry the surface. Every control is a thin white hairline on a
  * dark translucent ground, so the video stays legible through it; the arm
@@ -158,9 +158,9 @@ button {
   color: var(--dim);
 }
 
-/* --- HUD shell ------------------------------------------------------------ */
+/* --- Touch control shell -------------------------------------------------- */
 
-.hud {
+.touch-control {
   position: fixed;
   inset: 0;
   z-index: 2;
@@ -169,7 +169,7 @@ button {
 
 /* ROT on: a thin violet frame around the whole viewport, visible from
    wherever the eye happens to be. */
-body.is-rotate .hud::after {
+body.is-rotate .touch-control::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -551,7 +551,7 @@ body.is-rotate .rocker--z {
 }
 
 /* The key this button puts on the wire. Written by ui.js from the keymap,
-   so the HUD is its own legend and cannot drift from it. */
+   so the page is its own legend and cannot drift from it. */
 .key__badge {
   font-size: var(--text-badge);
   font-weight: 600;
@@ -793,7 +793,7 @@ body.is-offline .cluster {
 @media (orientation: portrait) {
   .feed,
   .feed-empty,
-  .hud {
+  .touch-control {
     display: none;
   }
 

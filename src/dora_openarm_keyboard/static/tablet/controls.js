@@ -36,7 +36,7 @@ const AXIS_RATIO = Math.sin((22.5 * Math.PI) / 180);
 // radius, so 1 is the rim. Inside the deadzone nothing is held; past it the
 // 8-way sectoring picks the keys and the remaining band is stretched to a
 // 0..1 magnitude, reported for drawing. Speed is not proportional to it: the
-// HUD drives the pulser from the SPEED preset alone.
+// page drives the pulser from the SPEED preset alone.
 export function stickVector(dx, dy, stickMap, { deadzone = 0.2 } = {}) {
   const keys = new Set();
   const length = Math.hypot(dx, dy);

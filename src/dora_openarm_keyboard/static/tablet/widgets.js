@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// DOM behaviours for the HUD's controls: pointer events in, callbacks out.
+// DOM behaviours for the touch controls: pointer events in, callbacks out.
 //
 // Every control here is a hold of some kind, and the node keeps moving for
 // as long as a key is down, so what matters most is that every press is
@@ -33,7 +33,7 @@ function capture(element, pointerId) {
 }
 
 // pointerup and pointercancel are the finger lifting; lostpointercapture is
-// capture ending for any other reason — the HUD being display:none'd by an
+// capture ending for any other reason — the page being display:none'd by an
 // orientation flip is the one that bites. Handlers are idempotent because a
 // normal pointerup is followed by lostpointercapture for the same pointer.
 function bindRelease(element, handler) {

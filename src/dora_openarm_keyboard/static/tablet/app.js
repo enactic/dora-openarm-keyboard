@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The touch HUD's link to the node: the same negotiation as teleop.js — a
-// data channel "keys", a recvonly video transceiver, non-trickle ICE and a
-// single POST to the offer endpoint — with the DOM kept out. ui.js owns
-// every pixel; this module only reports what the link is doing through
-// the callbacks it is handed.
+// The touch control page's link to the node: the same negotiation as
+// teleop.js — a data channel "keys", a recvonly video transceiver,
+// non-trickle ICE and a single POST to the offer endpoint — with the DOM
+// kept out. ui.js owns every pixel; this module only reports what the link
+// is doing through the callbacks it is handed.
 
 const ICE_SERVERS = [{ urls: ["stun:stun.cloudflare.com:3478"] }];
 
@@ -42,7 +42,7 @@ export function connect({
   channel.onclose = () => onClose();
 
   // A node that dies without closing anything leaves SCTP none the wiser: the
-  // data channel stays "open" against a peer that is gone, and the HUD would
+  // data channel stays "open" against a peer that is gone, and the page would
   // go on promising an operator that the robot is listening. ICE is what
   // notices, so the connection's own view of the link has to be reported too.
   // iceConnectionState is watched alongside connectionState because older
@@ -97,7 +97,7 @@ async function negotiate(pc) {
   await pc.setLocalDescription(await pc.createOffer());
   await iceGathered(pc);
 
-  // The HUD lives in its own directory beside the node's /offer, so the
+  // The page lives in its own directory beside the node's /offer, so the
   // endpoint is one level up; relative like teleop.js, so the page can be
   // hosted under any prefix as long as offer sits next to the directory.
   const response = await fetch("../offer", {
@@ -136,7 +136,7 @@ async function signalingError(response) {
   // The node's own /offer only ever fails with a bare status code. A
   // signaling broker in front of it (WebRTC-only mode) may answer with
   // {"error": "..."} instead; that sentence is the one thing worth putting
-  // on the HUD when it exists.
+  // on the page when it exists.
   try {
     const body = await response.json();
     if (body && body.error) return String(body.error);

@@ -16,9 +16,9 @@
 
 WebTeleopServer is exactly what the node runs in production; its own tests
 drive it in-process the same way.  Both pages are served — the keyboard page
-at / and the touch HUD at /tablet/ — received key events are printed, and a
-synthetic test-card JPEG is pushed as video so the video path is exercised
-too.
+at / and the touch controls at /tablet/ — received key events are printed,
+and a synthetic test-card JPEG is pushed as video so the video path is
+exercised too.
 
 Usage: uv run python dev/fake_node.py [--host 0.0.0.0] [--port 8080]
 """
@@ -103,7 +103,7 @@ async def run(host: str, port: int) -> None:
     await server.start()
     print(
         f"fake node listening on http://{host}:{port}/ (keyboard) "
-        f"and http://{host}:{port}/tablet/ (touch HUD)",
+        f"and http://{host}:{port}/tablet/ (touch control)",
         flush=True,
     )
     try:

@@ -181,8 +181,9 @@ async def _run_client(server, events, port):
 
 
 def test_tablet_page_served():
-    # The touch HUD is a second client of the same protocol, served from its
-    # own directory next to the keyboard page so their assets never collide.
+    # The touch control page is a second client of the same protocol, served
+    # from its own directory next to the keyboard page so their assets never
+    # collide.
     port = _free_port()
     server = WebTeleopServer(
         on_key=lambda action, name: None, host="127.0.0.1", port=port
@@ -225,7 +226,7 @@ async def _run_tablet_fetches(server, port):
             assert response.status == 200
             assert response.content_type == "text/css"
 
-            # The HUD negotiates through the node's own /offer, one level up.
+            # The page negotiates through the node's own /offer, one level up.
             response = await session.get(f"{base}/tablet/app.js")
             assert '"../offer"' in await response.text()
 

@@ -15,7 +15,7 @@
 """Browser teleoperation over WebRTC.
 
 Serves two single-page clients — the keyboard page (``static/index.html``
-and ``static/teleop.js``) at ``/`` and the touch HUD for iPads and phones
+and ``static/teleop.js``) at ``/`` and the touch controls for iPads and phones
 (``static/tablet/``) at ``/tablet/`` — plus the ``POST /offer`` signaling
 endpoint they share, then talks WebRTC with the browser:
 
@@ -70,10 +70,10 @@ _CLOCK_RATE = 90_000
 
 OnKey = Callable[[str, str], None]
 
-# The touch HUD for iPads and phones (``static/tablet/``): a second client of
-# the same protocol, served from its own directory so its assets never
-# collide with the keyboard page's.  Only these names are served; anything
-# else under ``/tablet/`` is a 404.
+# The touch control page for iPads and phones (``static/tablet/``): a second
+# client of the same protocol, served from its own directory so its assets
+# never collide with the keyboard page's.  Only these names are served;
+# anything else under ``/tablet/`` is a 404.
 _TABLET_ASSETS = {
     "style.css": "text/css",
     "app.js": "text/javascript",
@@ -257,8 +257,8 @@ class WebTeleopServer:
         )
 
     async def _handle_tablet_redirect(self, request: aioweb.Request) -> aioweb.Response:
-        # The HUD's page references its assets relatively, which only resolves
-        # inside the directory when the URL ends with a slash.
+        # The page references its assets relatively, which only resolves inside
+        # the directory when the URL ends with a slash.
         raise aioweb.HTTPFound("/tablet/")
 
     async def _handle_tablet_index(self, request: aioweb.Request) -> aioweb.Response:

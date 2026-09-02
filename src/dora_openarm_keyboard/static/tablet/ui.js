@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The HUD: pointer events in, virtual key events out.
+// The page: pointer events in, virtual key events out.
 //
 // Two ideas carry this file. Every motion control feeds the Pulser rather
 // than the chord directly, so the SPEED preset turns into a duty ratio the
@@ -83,7 +83,7 @@ const dom = {
 };
 
 // Filled in once the link exists; until then every control is inert but the
-// HUD still responds, so a page loaded before the node is up stays usable.
+// page still responds, so one loaded before the node is up stays usable.
 let link = null;
 let preset = DEFAULT_PRESET;
 let rotating = false;
@@ -114,7 +114,7 @@ function pulse(key) {
 }
 
 // Every hold button wears the key it sends, the way the stick's ticks do:
-// the HUD is its own legend and cannot drift from the keymap.
+// the page is its own legend and cannot drift from the keymap.
 function badge(element, text) {
   const span = document.createElement("span");
   span.className = "key__badge";
@@ -122,7 +122,7 @@ function badge(element, text) {
   element.appendChild(span);
 }
 
-// --- HUD state ------------------------------------------------------------
+// --- page state ------------------------------------------------------------
 
 function setLink(state, detail = "") {
   dom.status.textContent = STATUS[state];
@@ -336,7 +336,7 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden) releaseEverything();
 });
 
-// Turning the device to portrait hides the whole HUD behind the rotate gate.
+// Turning the device to portrait hides every control behind the rotate gate.
 // That fires neither blur nor visibilitychange, and it takes away the very
 // control the operator would have to let go of, so drop everything here.
 const portrait = window.matchMedia("(orientation: portrait)");
@@ -353,7 +353,7 @@ if (portrait.addEventListener) {
 
 // Each attempt stamps its own callbacks, so a connection being torn down
 // cannot report through them afterwards — its onclose would otherwise land
-// on the HUD as "link lost" moments after the replacement came up.
+// on the page as "link lost" moments after the replacement came up.
 let attempt = 0;
 
 function startLink() {
@@ -399,7 +399,7 @@ function startLink() {
       }),
     });
   } catch (error) {
-    // No WebRTC at all (an old or locked-down browser): the HUD stays up and
+    // No WebRTC at all (an old or locked-down browser): the page stays up and
     // says why rather than dying on module load.
     setLink("failed", error.message);
   }

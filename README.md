@@ -66,10 +66,10 @@ from another machine, pass `--host 0.0.0.0` and open `http://<node-host>:8080/`
 (browsers allow WebRTC on plain HTTP; camera/mic-free pages like this one need
 no HTTPS).
 
-## Touch HUD for iPad and iPhone
+## Touch control for iPad and iPhone
 
-The node also serves a thumb-driven touch HUD at `/tablet/`, for a tablet or
-phone held in both hands. It is a second client of the same key protocol —
+The node also serves thumb-driven touch controls at `/tablet/`, for a tablet
+or phone held in both hands. It is a second client of the same key protocol —
 a stick dragged up sends the same `w` keydown a keyboard would — so it drives
 the same node and the same dataflows with nothing else running.
 
@@ -77,7 +77,7 @@ The device is on the LAN, so start the node with `--host 0.0.0.0` (in a
 dataflow, `args: "--host 0.0.0.0"` or `env: {HOST: 0.0.0.0}` on the keyboard
 node), then open `http://<node-host>:8080/tablet/` in Safari and rotate to
 landscape; portrait shows a rotate prompt. Adding the page to the home screen
-gives a full-screen HUD.
+runs it full screen, without browser chrome.
 
 Each thumb owns one arm: a stick in the corner, a Z rocker above it, the
 gripper slider inboard and a ROT toggle diagonally up. HOME and QUIT sit in
@@ -95,20 +95,20 @@ hand.
 | QUIT | Hold 1.2 s: <kbd>Esc</kbd>, quits teleoperation | |
 
 **Speed.** The node moves at its fixed speed for as long as a key is down, so
-the HUD *pulses* motion keys inside a 40 ms period — the 25 % preset holds a
+the page *pulses* motion keys inside a 40 ms period — the 25 % preset holds a
 key for 10 ms of every 40 — and the effective speed follows the preset with
 no speed control in the node. ROT (<kbd>Shift</kbd>), HOME and QUIT are never
 pulsed.
 
 **Gripper.** The slider is position control on a node that only moves and
-reports nothing back: the HUD estimates where the gripper is from the keys it
+reports nothing back: the page estimates where the gripper is from the keys it
 has sent (the thin mark on the slider) and drives toward the knob. Pushing
 the knob all the way open or closed lets the node's own clamp make the
-estimate exact again — do that whenever the mark looks wrong. The HUD assumes
+estimate exact again — do that whenever the mark looks wrong. The page assumes
 the default `--grip-speed 2.0`; change `GRIP_SPEED` in `static/tablet/ui.js` if
 the node runs with another.
 
-Every motion control is hold to move, and the HUD lets go of everything —
+Every motion control is hold to move, and the page lets go of everything —
 keys, pulses and ROT — the moment the page loses focus, is backgrounded or
 turns to portrait, so an unwatched device can never keep the robot moving.
 The `?` pill shows the key bindings the node sends over its `help` channel
@@ -117,10 +117,10 @@ dropped link.
 
 ## When the keys do nothing
 
-Check the page: is it open, does its header say *connected* (the touch HUD's
-status pill says *Online*), and does the tab actually have focus (click the
-page once)? If Esc was pressed, the node has quit and the dataflow must be
-started again.
+Check the page: is it open, does its header say *connected* (the touch
+control page's status pill says *Online*), and does the tab actually have
+focus (click the page once)? If Esc was pressed, the node has quit and the
+dataflow must be started again.
 
 ## Interface
 
@@ -212,8 +212,8 @@ node --test 'tests/js/**/*.test.mjs'
 The pose integrator in `teleop.py` imports neither `dora` nor the WebRTC
 stack, so the whole state machine is tested without a dataflow or a browser;
 `tests/test_web.py` exercises the WebRTC server end to end in-process; and
-`tests/js/` covers the touch HUD's stick mapping, pulser timing, gripper
-follower and pointer widgets under Node's test runner.
+`tests/js/` covers the touch control page's stick mapping, pulser timing,
+gripper follower and pointer widgets under Node's test runner.
 
 To work on either page without a dataflow, `uv run python dev/fake_node.py`
 runs the real `WebTeleopServer` with no dora attached; see

@@ -20,11 +20,17 @@
 // registers a reset, so the page-level safety hooks can let go of everything
 // — pulses, chord and ROT — in one call.
 
-import { KEYMAP, KeyChord, stickVector } from "./controls.js";
-import { Pulser } from "./pulser.js";
-import { GripFollower } from "./grip.js";
-import { bindHold, bindHoldToConfirm, bindSlider, bindStick, bindTap } from "./widgets.js";
 import { connect } from "./app.js";
+import { KEYMAP, KeyChord, stickVector } from "./controls.js";
+import { GripFollower } from "./grip.js";
+import { Pulser } from "./pulser.js";
+import {
+  bindHold,
+  bindHoldToConfirm,
+  bindSlider,
+  bindStick,
+  bindTap,
+} from "./widgets.js";
 
 // Keep in sync with --hold on #home / #quit in style.css: the bar and the
 // timer must finish together or the button lies about when it fires.
@@ -255,7 +261,10 @@ function wireGrip(side, gripMap) {
   const slider = document.getElementById(`grip-${side}`);
   const track = slider.querySelector(".slider__track");
   badge(slider.querySelector(".slider__end--open"), gripMap.open.toUpperCase());
-  badge(slider.querySelector(".slider__end--close"), gripMap.close.toUpperCase());
+  badge(
+    slider.querySelector(".slider__end--close"),
+    gripMap.close.toUpperCase(),
+  );
   const source = `grip-${side}`;
 
   const follower = new GripFollower({
@@ -306,7 +315,9 @@ bindHoldToConfirm(dom.quit, {
 });
 
 for (const button of dom.speed.querySelectorAll("button")) {
-  button.addEventListener("click", () => setPreset(Number(button.dataset.preset)));
+  button.addEventListener("click", () =>
+    setPreset(Number(button.dataset.preset)),
+  );
 }
 
 dom.infoToggle.addEventListener("click", () => {

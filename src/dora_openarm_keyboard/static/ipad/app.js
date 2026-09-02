@@ -49,7 +49,10 @@ export function connect({
   // iPadOS Safari drives the former more reliably; onClose is idempotent, so
   // both of them reporting the same loss is harmless.
   const checkTransport = () => {
-    if (DOWN_STATES.has(pc.connectionState) || DOWN_STATES.has(pc.iceConnectionState)) {
+    if (
+      DOWN_STATES.has(pc.connectionState) ||
+      DOWN_STATES.has(pc.iceConnectionState)
+    ) {
       onClose();
     }
   };

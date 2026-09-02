@@ -142,8 +142,12 @@ test("bindHoldToConfirm's reset disarms a pending hold", () => {
 });
 
 test("bindStick reports the vector from the ring centre in ring radii", () => {
-  const hit = new FakeElement({ rect: { left: 0, top: 0, width: 280, height: 280 } });
-  const ring = new FakeElement({ rect: { left: 40, top: 40, width: 200, height: 200 } });
+  const hit = new FakeElement({
+    rect: { left: 0, top: 0, width: 280, height: 280 },
+  });
+  const ring = new FakeElement({
+    rect: { left: 40, top: 40, width: 200, height: 200 },
+  });
   const changes = [];
   let releases = 0;
   bindStick(hit, ring, {
@@ -162,8 +166,12 @@ test("bindStick reports the vector from the ring centre in ring radii", () => {
 });
 
 test("bindStick ignores a second pointer and releases on lostpointercapture", () => {
-  const hit = new FakeElement({ rect: { left: 0, top: 0, width: 280, height: 280 } });
-  const ring = new FakeElement({ rect: { left: 40, top: 40, width: 200, height: 200 } });
+  const hit = new FakeElement({
+    rect: { left: 0, top: 0, width: 280, height: 280 },
+  });
+  const ring = new FakeElement({
+    rect: { left: 40, top: 40, width: 200, height: 200 },
+  });
   const changes = [];
   let releases = 0;
   const resets = [];
@@ -183,8 +191,12 @@ test("bindStick ignores a second pointer and releases on lostpointercapture", ()
 });
 
 test("bindStick's reset releases an engaged stick and forgets its pointer", () => {
-  const hit = new FakeElement({ rect: { left: 0, top: 0, width: 280, height: 280 } });
-  const ring = new FakeElement({ rect: { left: 40, top: 40, width: 200, height: 200 } });
+  const hit = new FakeElement({
+    rect: { left: 0, top: 0, width: 280, height: 280 },
+  });
+  const ring = new FakeElement({
+    rect: { left: 40, top: 40, width: 200, height: 200 },
+  });
   let releases = 0;
   const resets = [];
   bindStick(hit, ring, {
@@ -224,7 +236,9 @@ test("bindHoldToConfirm cancels when the finger slides off the button", () => {
 });
 
 test("bindSlider reports the thumb's position along the track, clamped, on down and move", () => {
-  const track = new FakeElement({ rect: { left: 10, top: 100, width: 40, height: 200 } });
+  const track = new FakeElement({
+    rect: { left: 10, top: 100, width: 40, height: 200 },
+  });
   const values = [];
   bindSlider(track, { onChange: (v) => values.push(v), resets: [] });
   track.fire("pointerdown", { pointerId: 1, clientX: 30, clientY: 150 });
@@ -240,7 +254,9 @@ test("bindSlider reports the thumb's position along the track, clamped, on down 
 });
 
 test("bindSlider ignores a second pointer and its reset only clears the pressed state", () => {
-  const track = new FakeElement({ rect: { left: 0, top: 0, width: 40, height: 100 } });
+  const track = new FakeElement({
+    rect: { left: 0, top: 0, width: 40, height: 100 },
+  });
   const values = [];
   const resets = [];
   bindSlider(track, { onChange: (v) => values.push(v), resets });
@@ -255,8 +271,12 @@ test("bindSlider ignores a second pointer and its reset only clears the pressed 
 });
 
 test("bindSlider measures against a separate track when the touch target is larger", () => {
-  const element = new FakeElement({ rect: { left: 0, top: 0, width: 100, height: 300 } });
-  const track = new FakeElement({ rect: { left: 30, top: 50, width: 40, height: 200 } });
+  const element = new FakeElement({
+    rect: { left: 0, top: 0, width: 100, height: 300 },
+  });
+  const track = new FakeElement({
+    rect: { left: 30, top: 50, width: 40, height: 200 },
+  });
   const values = [];
   bindSlider(element, { onChange: (v) => values.push(v), resets: [], track });
   element.fire("pointerdown", { pointerId: 1, clientX: 50, clientY: 150 });
@@ -264,8 +284,12 @@ test("bindSlider measures against a separate track when the touch target is larg
 });
 
 test("bindStick ignores a touch that lands outside the ring, but keeps a thumb that slides out", () => {
-  const hit = new FakeElement({ rect: { left: 0, top: 0, width: 280, height: 280 } });
-  const ring = new FakeElement({ rect: { left: 40, top: 40, width: 200, height: 200 } });
+  const hit = new FakeElement({
+    rect: { left: 0, top: 0, width: 280, height: 280 },
+  });
+  const ring = new FakeElement({
+    rect: { left: 40, top: 40, width: 200, height: 200 },
+  });
   const changes = [];
   let releases = 0;
   bindStick(hit, ring, {

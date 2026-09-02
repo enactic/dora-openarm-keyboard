@@ -48,7 +48,10 @@ test("a mid-range target drives the close key until the estimate arrives, then s
   assert.deepEqual(last.slice(1), [[], 0]);
   // 0.5 at 2/s is 250 ms; the estimate arrives within one 20 ms step.
   assert.ok(last[0] >= 240 && last[0] <= 260, `stopped at ${last[0]} ms`);
-  assert.ok(Math.abs(follower.estimate - 0.5) <= 0.02 + 1e-9, `estimate ${follower.estimate}`);
+  assert.ok(
+    Math.abs(follower.estimate - 0.5) <= 0.02 + 1e-9,
+    `estimate ${follower.estimate}`,
+  );
   assert.equal(follower.target, 0.5);
   assert.equal(clock.pending(), 0);
 });
@@ -60,7 +63,10 @@ test("a target below the estimate drives the open key", () => {
   follower.setTarget(0.25);
   assert.deepEqual(drives[drives.length - 1].slice(1), [["c"], 1]);
   clock.advance(1000);
-  assert.ok(Math.abs(follower.estimate - 0.25) <= 0.02 + 1e-9, `estimate ${follower.estimate}`);
+  assert.ok(
+    Math.abs(follower.estimate - 0.25) <= 0.02 + 1e-9,
+    `estimate ${follower.estimate}`,
+  );
   assert.deepEqual(drives[drives.length - 1].slice(1), [[], 0]);
 });
 
@@ -124,7 +130,10 @@ test("targets within epsilon of an end snap to it, and onUpdate reports clamped 
   assert.equal(follower.target, 1);
   clock.advance(2000);
   for (const [, estimate] of updates) {
-    assert.ok(estimate >= 0 && estimate <= 1, `estimate ${estimate} out of range`);
+    assert.ok(
+      estimate >= 0 && estimate <= 1,
+      `estimate ${estimate} out of range`,
+    );
   }
 });
 
@@ -155,7 +164,9 @@ test("a late tick credits the whole time the key was down", () => {
   const { clock, drives, follower } = harness();
   follower.setTarget(0.5);
   // The ticker fires late, as a throttled page would: 300 ms in one jump.
-  clock._timers.forEach((timer) => { timer.at += 280; });
+  clock._timers.forEach((timer) => {
+    timer.at += 280;
+  });
   clock.advance(300);
   assert.ok(follower.estimate >= 0.5 - 1e-9, `estimate ${follower.estimate}`);
   assert.deepEqual(drives[drives.length - 1].slice(1), [[], 0]);

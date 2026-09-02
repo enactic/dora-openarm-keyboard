@@ -137,7 +137,9 @@ export class GripFollower {
     // next tick; stop instead and let the next real target update correct
     // it.
     const crossed =
-      this._driving && Math.sign(before) !== 0 && Math.sign(error) !== Math.sign(before);
+      this._driving &&
+      Math.sign(before) !== 0 &&
+      Math.sign(error) !== Math.sign(before);
     if (Math.abs(error) <= threshold || crossed) {
       this._arrive();
       return;
@@ -145,7 +147,10 @@ export class GripFollower {
     this._direction = Math.sign(error);
     this._duty = duty;
     this._driving = true;
-    this._drive([this._direction > 0 ? this._keys.close : this._keys.open], duty);
+    this._drive(
+      [this._direction > 0 ? this._keys.close : this._keys.open],
+      duty,
+    );
     this._onUpdate(clamp01(this.estimate), this.target);
   }
 

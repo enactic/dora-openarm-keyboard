@@ -54,7 +54,14 @@ export class FakeElement {
 
   getBoundingClientRect() {
     const { left, top, width, height } = this.rect;
-    return { left, top, width, height, right: left + width, bottom: top + height };
+    return {
+      left,
+      top,
+      width,
+      height,
+      right: left + width,
+      bottom: top + height,
+    };
   }
 
   // Dispatches a synthetic event to this element's listeners. clientX/Y

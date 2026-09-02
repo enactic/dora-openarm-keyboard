@@ -24,7 +24,9 @@ import { FakeClock } from "./helpers/fake-timers.mjs";
 function harness() {
   const clock = new FakeClock();
   const events = [];
-  const chord = new KeyChord((type, key) => events.push([clock.now, type, key]));
+  const chord = new KeyChord((type, key) =>
+    events.push([clock.now, type, key]),
+  );
   const pulser = new Pulser(chord, { period: 40, ...clock });
   return { clock, events, pulser };
 }
@@ -169,7 +171,9 @@ test("a NaN duty releases instead of falling through", () => {
 test("timer functions are called as plain functions, the way browsers require", () => {
   const clock = new FakeClock();
   const events = [];
-  const chord = new KeyChord((type, key) => events.push([clock.now, type, key]));
+  const chord = new KeyChord((type, key) =>
+    events.push([clock.now, type, key]),
+  );
   const pulser = new Pulser(chord, { period: 40, ...browserLikeTimers(clock) });
   pulser.set("z", ["r"], 0.25);
   clock.advance(45);

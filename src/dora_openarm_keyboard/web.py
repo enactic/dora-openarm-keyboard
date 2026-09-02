@@ -14,9 +14,10 @@
 
 """Browser teleoperation over WebRTC.
 
-Serves a single-page client (``static/index.html`` and ``static/teleop.js``)
-plus a ``POST /offer``
-signaling endpoint, then talks WebRTC with the browser:
+Serves two single-page clients — the keyboard page (``static/index.html``
+and ``static/teleop.js``) at ``/`` and the touch HUD for iPads and phones
+(``static/ipad/``) at ``/ipad/`` — plus the ``POST /offer`` signaling
+endpoint they share, then talks WebRTC with the browser:
 
 * key events arrive on a data channel labelled ``keys`` as JSON
   ``{"type": "keydown" | "keyup", "key": <KeyboardEvent.key>}`` and are handed
@@ -68,6 +69,20 @@ from .keymap import HELP_TEXT, QUIT_KEY, ROTATION_KEY
 _CLOCK_RATE = 90_000
 
 OnKey = Callable[[str, str], None]
+
+# The touch HUD for iPads and phones (``static/ipad/``): a second client of
+# the same protocol, served from its own directory so its assets never
+# collide with the keyboard page's.  Only these names are served; anything
+# else under ``/ipad/`` is a 404.
+_IPAD_ASSETS = {
+    "style.css": "text/css",
+    "app.js": "text/javascript",
+    "controls.js": "text/javascript",
+    "grip.js": "text/javascript",
+    "pulser.js": "text/javascript",
+    "ui.js": "text/javascript",
+    "widgets.js": "text/javascript",
+}
 
 
 def _normalize_browser_key(key: object) -> str | None:
@@ -194,6 +209,9 @@ class WebTeleopServer:
         app = aioweb.Application()
         app.router.add_get("/", self._handle_index)
         app.router.add_get("/teleop.js", self._handle_script)
+        app.router.add_get("/ipad", self._handle_ipad_redirect)
+        app.router.add_get("/ipad/", self._handle_ipad_index)
+        app.router.add_get("/ipad/{name}", self._handle_ipad_asset)
         app.router.add_post("/offer", self._handle_offer)
         runner = aioweb.AppRunner(app, access_log=None)
         await runner.setup()
@@ -221,9 +239,11 @@ class WebTeleopServer:
             self._runner = None
 
     @staticmethod
-    def _static_text(name: str) -> str:
-        return (resources.files(__package__) / "static" / name).read_text(
-            encoding="utf-8"
+    def _static_text(*parts: str) -> str:
+        return (
+            resources.files(__package__)
+            .joinpath("static", *parts)
+            .read_text(encoding="utf-8")
         )
 
     async def _handle_index(self, request: aioweb.Request) -> aioweb.Response:
@@ -234,6 +254,25 @@ class WebTeleopServer:
     async def _handle_script(self, request: aioweb.Request) -> aioweb.Response:
         return aioweb.Response(
             text=self._static_text("teleop.js"), content_type="text/javascript"
+        )
+
+    async def _handle_ipad_redirect(self, request: aioweb.Request) -> aioweb.Response:
+        # The HUD's page references its assets relatively, which only resolves
+        # inside the directory when the URL ends with a slash.
+        raise aioweb.HTTPFound("/ipad/")
+
+    async def _handle_ipad_index(self, request: aioweb.Request) -> aioweb.Response:
+        return aioweb.Response(
+            text=self._static_text("ipad", "index.html"), content_type="text/html"
+        )
+
+    async def _handle_ipad_asset(self, request: aioweb.Request) -> aioweb.Response:
+        name = request.match_info["name"]
+        content_type = _IPAD_ASSETS.get(name)
+        if content_type is None:
+            raise aioweb.HTTPNotFound()
+        return aioweb.Response(
+            text=self._static_text("ipad", name), content_type=content_type
         )
 
     def _create_peer(self) -> RTCPeerConnection:

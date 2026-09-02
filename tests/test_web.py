@@ -180,6 +180,65 @@ async def _run_client(server, events, port):
             await pc.close()
 
 
+def test_ipad_page_served():
+    # The touch HUD is a second client of the same protocol, served from its
+    # own directory next to the keyboard page so their assets never collide.
+    port = _free_port()
+    server = WebTeleopServer(
+        on_key=lambda action, name: None, host="127.0.0.1", port=port
+    )
+    asyncio.run(_run_ipad_fetches(server, port))
+
+
+async def _run_ipad_fetches(server, port):
+    base = f"http://127.0.0.1:{port}"
+    await server.start()
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Without the trailing slash, the page's relative references
+            # would resolve outside its directory.
+            response = await session.get(f"{base}/ipad", allow_redirects=False)
+            assert response.status == 302
+            assert response.headers["Location"] == "/ipad/"
+
+            response = await session.get(f"{base}/ipad/")
+            assert response.status == 200
+            assert response.content_type == "text/html"
+            page = await response.text()
+            assert 'id="stick-left"' in page
+            assert 'src="ui.js"' in page
+
+            scripts = (
+                "app.js",
+                "controls.js",
+                "grip.js",
+                "pulser.js",
+                "ui.js",
+                "widgets.js",
+            )
+            for name in scripts:
+                response = await session.get(f"{base}/ipad/{name}")
+                assert response.status == 200, name
+                assert response.content_type == "text/javascript", name
+
+            response = await session.get(f"{base}/ipad/style.css")
+            assert response.status == 200
+            assert response.content_type == "text/css"
+
+            # The HUD negotiates through the node's own /offer, one level up.
+            response = await session.get(f"{base}/ipad/app.js")
+            assert '"../offer"' in await response.text()
+
+            response = await session.get(f"{base}/ipad/missing.js")
+            assert response.status == 404
+
+            # The keyboard page is untouched.
+            response = await session.get(f"{base}/")
+            assert "teleop.js" in await response.text()
+    finally:
+        await server.stop()
+
+
 def test_oneshot_signaling():
     # WebRTC-only mode: no HTTP server. An offer is handed to negotiate_oneshot,
     # the answer comes back over a TCP socket the caller listens on, and once

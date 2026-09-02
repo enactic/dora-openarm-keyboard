@@ -15,7 +15,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { GripFollower } from "../../src/dora_openarm_keyboard/static/ipad/grip.js";
+import { GripFollower } from "../../src/dora_openarm_keyboard/static/tablet/grip.js";
 import { FakeClock } from "./helpers/fake-timers.mjs";
 
 // Records every drive() call with the clock time; `preset` is a mutable box

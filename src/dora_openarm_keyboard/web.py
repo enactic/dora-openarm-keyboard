@@ -16,7 +16,7 @@
 
 Serves two single-page clients — the keyboard page (``static/index.html``
 and ``static/teleop.js``) at ``/`` and the touch HUD for iPads and phones
-(``static/ipad/``) at ``/ipad/`` — plus the ``POST /offer`` signaling
+(``static/tablet/``) at ``/tablet/`` — plus the ``POST /offer`` signaling
 endpoint they share, then talks WebRTC with the browser:
 
 * key events arrive on a data channel labelled ``keys`` as JSON
@@ -70,11 +70,11 @@ _CLOCK_RATE = 90_000
 
 OnKey = Callable[[str, str], None]
 
-# The touch HUD for iPads and phones (``static/ipad/``): a second client of
+# The touch HUD for iPads and phones (``static/tablet/``): a second client of
 # the same protocol, served from its own directory so its assets never
 # collide with the keyboard page's.  Only these names are served; anything
-# else under ``/ipad/`` is a 404.
-_IPAD_ASSETS = {
+# else under ``/tablet/`` is a 404.
+_TABLET_ASSETS = {
     "style.css": "text/css",
     "app.js": "text/javascript",
     "controls.js": "text/javascript",
@@ -209,9 +209,9 @@ class WebTeleopServer:
         app = aioweb.Application()
         app.router.add_get("/", self._handle_index)
         app.router.add_get("/teleop.js", self._handle_script)
-        app.router.add_get("/ipad", self._handle_ipad_redirect)
-        app.router.add_get("/ipad/", self._handle_ipad_index)
-        app.router.add_get("/ipad/{name}", self._handle_ipad_asset)
+        app.router.add_get("/tablet", self._handle_tablet_redirect)
+        app.router.add_get("/tablet/", self._handle_tablet_index)
+        app.router.add_get("/tablet/{name}", self._handle_tablet_asset)
         app.router.add_post("/offer", self._handle_offer)
         runner = aioweb.AppRunner(app, access_log=None)
         await runner.setup()
@@ -256,23 +256,23 @@ class WebTeleopServer:
             text=self._static_text("teleop.js"), content_type="text/javascript"
         )
 
-    async def _handle_ipad_redirect(self, request: aioweb.Request) -> aioweb.Response:
+    async def _handle_tablet_redirect(self, request: aioweb.Request) -> aioweb.Response:
         # The HUD's page references its assets relatively, which only resolves
         # inside the directory when the URL ends with a slash.
-        raise aioweb.HTTPFound("/ipad/")
+        raise aioweb.HTTPFound("/tablet/")
 
-    async def _handle_ipad_index(self, request: aioweb.Request) -> aioweb.Response:
+    async def _handle_tablet_index(self, request: aioweb.Request) -> aioweb.Response:
         return aioweb.Response(
-            text=self._static_text("ipad", "index.html"), content_type="text/html"
+            text=self._static_text("tablet", "index.html"), content_type="text/html"
         )
 
-    async def _handle_ipad_asset(self, request: aioweb.Request) -> aioweb.Response:
+    async def _handle_tablet_asset(self, request: aioweb.Request) -> aioweb.Response:
         name = request.match_info["name"]
-        content_type = _IPAD_ASSETS.get(name)
+        content_type = _TABLET_ASSETS.get(name)
         if content_type is None:
             raise aioweb.HTTPNotFound()
         return aioweb.Response(
-            text=self._static_text("ipad", name), content_type=content_type
+            text=self._static_text("tablet", name), content_type=content_type
         )
 
     def _create_peer(self) -> RTCPeerConnection:

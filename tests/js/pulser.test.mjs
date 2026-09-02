@@ -15,8 +15,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { KeyChord } from "../../src/dora_openarm_keyboard/static/ipad/controls.js";
-import { Pulser } from "../../src/dora_openarm_keyboard/static/ipad/pulser.js";
+import { KeyChord } from "../../src/dora_openarm_keyboard/static/tablet/controls.js";
+import { Pulser } from "../../src/dora_openarm_keyboard/static/tablet/pulser.js";
 import { FakeClock } from "./helpers/fake-timers.mjs";
 
 // Every event is stamped with the fake clock's time so the tests assert on

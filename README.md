@@ -68,14 +68,14 @@ no HTTPS).
 
 ## Touch HUD for iPad and iPhone
 
-The node also serves a thumb-driven touch HUD at `/ipad/`, for a tablet or
+The node also serves a thumb-driven touch HUD at `/tablet/`, for a tablet or
 phone held in both hands. It is a second client of the same key protocol —
 a stick dragged up sends the same `w` keydown a keyboard would — so it drives
 the same node and the same dataflows with nothing else running.
 
 The device is on the LAN, so start the node with `--host 0.0.0.0` (in a
 dataflow, `args: "--host 0.0.0.0"` or `env: {HOST: 0.0.0.0}` on the keyboard
-node), then open `http://<node-host>:8080/ipad/` in Safari and rotate to
+node), then open `http://<node-host>:8080/tablet/` in Safari and rotate to
 landscape; portrait shows a rotate prompt. Adding the page to the home screen
 gives a full-screen HUD.
 
@@ -105,7 +105,7 @@ reports nothing back: the HUD estimates where the gripper is from the keys it
 has sent (the thin mark on the slider) and drives toward the knob. Pushing
 the knob all the way open or closed lets the node's own clamp make the
 estimate exact again — do that whenever the mark looks wrong. The HUD assumes
-the default `--grip-speed 2.0`; change `GRIP_SPEED` in `static/ipad/ui.js` if
+the default `--grip-speed 2.0`; change `GRIP_SPEED` in `static/tablet/ui.js` if
 the node runs with another.
 
 Every motion control is hold to move, and the HUD lets go of everything —

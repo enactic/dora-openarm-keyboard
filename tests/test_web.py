@@ -180,28 +180,28 @@ async def _run_client(server, events, port):
             await pc.close()
 
 
-def test_ipad_page_served():
+def test_tablet_page_served():
     # The touch HUD is a second client of the same protocol, served from its
     # own directory next to the keyboard page so their assets never collide.
     port = _free_port()
     server = WebTeleopServer(
         on_key=lambda action, name: None, host="127.0.0.1", port=port
     )
-    asyncio.run(_run_ipad_fetches(server, port))
+    asyncio.run(_run_tablet_fetches(server, port))
 
 
-async def _run_ipad_fetches(server, port):
+async def _run_tablet_fetches(server, port):
     base = f"http://127.0.0.1:{port}"
     await server.start()
     try:
         async with aiohttp.ClientSession() as session:
             # Without the trailing slash, the page's relative references
             # would resolve outside its directory.
-            response = await session.get(f"{base}/ipad", allow_redirects=False)
+            response = await session.get(f"{base}/tablet", allow_redirects=False)
             assert response.status == 302
-            assert response.headers["Location"] == "/ipad/"
+            assert response.headers["Location"] == "/tablet/"
 
-            response = await session.get(f"{base}/ipad/")
+            response = await session.get(f"{base}/tablet/")
             assert response.status == 200
             assert response.content_type == "text/html"
             page = await response.text()
@@ -217,19 +217,19 @@ async def _run_ipad_fetches(server, port):
                 "widgets.js",
             )
             for name in scripts:
-                response = await session.get(f"{base}/ipad/{name}")
+                response = await session.get(f"{base}/tablet/{name}")
                 assert response.status == 200, name
                 assert response.content_type == "text/javascript", name
 
-            response = await session.get(f"{base}/ipad/style.css")
+            response = await session.get(f"{base}/tablet/style.css")
             assert response.status == 200
             assert response.content_type == "text/css"
 
             # The HUD negotiates through the node's own /offer, one level up.
-            response = await session.get(f"{base}/ipad/app.js")
+            response = await session.get(f"{base}/tablet/app.js")
             assert '"../offer"' in await response.text()
 
-            response = await session.get(f"{base}/ipad/missing.js")
+            response = await session.get(f"{base}/tablet/missing.js")
             assert response.status == 404
 
             # The keyboard page is untouched.

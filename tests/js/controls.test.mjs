@@ -20,7 +20,7 @@ import {
   KeyChord,
   stickKeys,
   stickVector,
-} from "../../src/dora_openarm_keyboard/static/ipad/controls.js";
+} from "../../src/dora_openarm_keyboard/static/tablet/controls.js";
 
 test("deadzone yields no keys", () => {
   assert.deepEqual(stickKeys(0.1, -0.1, KEYMAP.leftStick), new Set());

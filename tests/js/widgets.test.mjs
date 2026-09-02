@@ -21,7 +21,7 @@ import {
   bindSlider,
   bindStick,
   bindTap,
-} from "../../src/dora_openarm_keyboard/static/ipad/widgets.js";
+} from "../../src/dora_openarm_keyboard/static/tablet/widgets.js";
 import { FakeElement } from "./helpers/fake-dom.mjs";
 import { FakeClock } from "./helpers/fake-timers.mjs";
 

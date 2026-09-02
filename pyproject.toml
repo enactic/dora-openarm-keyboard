@@ -55,9 +55,9 @@ where = ["src"]
 dora_openarm_keyboard = [
   "static/*.html",
   "static/*.js",
-  "static/ipad/*.html",
-  "static/ipad/*.js",
-  "static/ipad/*.css",
+  "static/tablet/*.html",
+  "static/tablet/*.js",
+  "static/tablet/*.css",
 ]
 
 [tool.ruff.lint]

@@ -1,0 +1,834 @@
+/*
+ * Copyright 2026 Enactic, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* OpenArm teleop HUD — instrument style.
+ *
+ * Two ideas carry the surface. Every control is a thin white hairline on a
+ * dark translucent ground, so the video stays legible through it; the arm
+ * colour (cyan left, amber right) appears only as an index line, the key
+ * badge, and the pressed fill, so a lit control tells you which arm it
+ * belongs to without shouting when idle. Violet replaces the arm colour
+ * while ROT is on, because that is the moment every stick changes meaning.
+ *
+ * Every size derives from the viewport height so one layout serves an iPad
+ * and a landscape iPhone; the clusters hug the bottom corners where thumbs
+ * rest, offset by the safe-area insets.
+ *
+ * Fonts are system faces on purpose: the workcell LAN may have no route to
+ * the internet, and a hanging webfont would leave the operator staring at
+ * invisible labels.
+ */
+
+:root {
+  --port: #5ce1e6;
+  --port-rgb: 92, 225, 230;
+  --starboard: #ffb340;
+  --starboard-rgb: 255, 179, 64;
+  --rot: #c9a3ff;
+  --rot-rgb: 201, 163, 255;
+  --ok: #5df2a4;
+  --fault: #ff8080;
+  --ink: #eef2f6;
+  --dim: rgba(238, 242, 246, 0.6);
+  --line: rgba(255, 255, 255, 0.6);
+  --line-soft: rgba(255, 255, 255, 0.35);
+  --ground: rgba(8, 10, 12, 0.45);
+  --ground-solid: #0b0d10;
+
+  --channel: var(--line);
+  --channel-rgb: 255, 255, 255;
+
+  --font: system-ui, -apple-system, "Helvetica Neue", sans-serif;
+
+  /* Geometry. Stick, buttons and strip all scale with the viewport height
+     and floor at Apple's 44 pt minimum tap size. */
+  --stick: clamp(120px, 24vh, 200px);
+  --bh: max(44px, 8vh);
+  --bw: calc(var(--bh) * 2);
+  /* Floored against the badge size: the stick's tick labels sit 1.5em of
+     --text-badge outside the ring, and on a phone 2vh is less than that. */
+  --gap: max(2vh, calc(1.8 * var(--text-badge)));
+  --strip-h: max(36px, 6.5vh);
+  --edge-y: calc(env(safe-area-inset-bottom, 0px) + 12vh);
+
+  --text-key: clamp(13px, 2.4vh, 20px);
+  --text-badge: clamp(11px, 1.6vh, 13px);
+  --text-strip: clamp(12px, 2vh, 16px);
+  --text-label: clamp(12px, 1.9vh, 15px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  background: #000;
+  color: var(--ink);
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+  /* The whole page is a control surface: no scrolling, no double-tap zoom,
+     no text selection or long-press callouts under a thumb. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* --- video ---------------------------------------------------------------- */
+
+.feed {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  z-index: 0;
+}
+
+.feed-empty {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6em;
+  pointer-events: none;
+  text-align: center;
+}
+
+.feed-empty__title {
+  margin: 0;
+  font-size: var(--text-strip);
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.feed-empty__note {
+  margin: 0;
+  font-size: var(--text-label);
+  color: var(--dim);
+}
+
+/* --- HUD shell ------------------------------------------------------------ */
+
+.hud {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ROT on: a thin violet frame around the whole viewport, visible from
+   wherever the eye happens to be. */
+body.is-rotate .hud::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--rot);
+  pointer-events: none;
+}
+
+/* --- top strip ------------------------------------------------------------ */
+
+.strip {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 2.5vh);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: stretch;
+  gap: 1vh;
+  height: var(--strip-h);
+  pointer-events: auto;
+}
+
+.pill {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0 1.1em;
+  overflow: hidden;
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: var(--text-strip);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pill--icon {
+  padding: 0 0.9em;
+  font-weight: 600;
+}
+
+.pill--icon[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ground-solid);
+}
+
+.pill__hint {
+  font-size: 0.7em;
+  letter-spacing: 0.16em;
+  color: var(--dim);
+}
+
+/* Hold-to-confirm: the bar sweeps across over the hold. --hold on each
+   button matches HOME_HOLD_MS / QUIT_HOLD_MS in ui.js; the bar and the
+   timer must finish together or the button lies about when it fires. */
+.pill__bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: rgba(255, 255, 255, 0.28);
+  pointer-events: none;
+}
+
+#home {
+  --hold: 500ms;
+}
+
+#quit {
+  --hold: 1200ms;
+}
+
+.pill--confirm.is-arming .pill__bar {
+  width: 100%;
+  transition: width var(--hold) linear;
+}
+
+.pill--confirm.is-fired {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--ground-solid);
+}
+
+.pill--confirm.is-fired .pill__hint {
+  color: var(--ground-solid);
+}
+
+.pill--quit {
+  color: var(--fault);
+  border-color: rgba(255, 128, 128, 0.7);
+}
+
+.pill--quit .pill__bar {
+  background: rgba(255, 128, 128, 0.35);
+}
+
+.pill--quit.is-fired {
+  background: var(--fault);
+  border-color: var(--fault);
+}
+
+/* Status pill: LED + state, then the mode word. A button, but only lit as
+   one while there is a link to recover. */
+.pill--status:enabled {
+  cursor: pointer;
+  border-color: var(--fault);
+}
+
+.pill--status:enabled:active {
+  background: rgba(255, 128, 128, 0.2);
+}
+
+.led {
+  flex: none;
+  width: 0.45em;
+  height: 0.45em;
+  border-radius: 50%;
+  background: var(--dim);
+}
+
+.pill--status[data-state="connecting"] .led {
+  animation: blink 1s steps(2, jump-none) infinite;
+}
+
+.pill--status[data-state="online"] .led {
+  background: var(--ok);
+  box-shadow: 0 0 8px var(--ok);
+}
+
+.pill--status[data-state="lost"],
+.pill--status[data-state="failed"] {
+  color: var(--fault);
+}
+
+.pill--status[data-state="lost"] .led,
+.pill--status[data-state="failed"] .led {
+  background: var(--fault);
+  box-shadow: 0 0 8px var(--fault);
+}
+
+.pill__mode {
+  padding-left: 0.7em;
+  border-left: 1px solid var(--line-soft);
+  color: var(--dim);
+}
+
+body.is-rotate .pill__mode {
+  color: var(--rot);
+}
+
+@keyframes blink {
+  0% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Speed preset: three segments, the active one filled. */
+.pill--seg {
+  padding: 0;
+  gap: 0;
+}
+
+.pill--seg button {
+  height: 100%;
+  padding: 0 0.9em;
+  border-right: 1px solid var(--line-soft);
+  letter-spacing: 0.06em;
+}
+
+.pill--seg button:last-child {
+  border-right: none;
+}
+
+.pill--seg button[aria-checked="true"] {
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ground-solid);
+  font-weight: 600;
+}
+
+/* --- info panel ----------------------------------------------------------- */
+
+.info {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 2.5vh + var(--strip-h) + 1vh);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, 60vw);
+  max-height: 55vh;
+  padding: 1.2em 1.4em;
+  overflow-y: auto;
+  /* The one place a finger may drag the page: the node's help text can run
+     longer than the panel. */
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  background: rgba(8, 10, 12, 0.85);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  pointer-events: auto;
+}
+
+.info__detail {
+  margin: 0 0 1em;
+  padding: 0.6em 0.8em;
+  border-left: 2px solid var(--fault);
+  font-size: var(--text-label);
+  line-height: 1.5;
+  color: #ffc9c9;
+}
+
+.info__title {
+  margin: 0 0 0.6em;
+  font-size: var(--text-badge);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.info__body {
+  margin: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: var(--text-label);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--ink);
+}
+
+/* --- clusters ------------------------------------------------------------- */
+
+/* Each cluster is a corner-anchored layer; its children are placed
+   absolutely from the cluster's own edge (--edge-x) and the shared bottom
+   inset (--edge-y). The left cluster measures from the left, the right from
+   the right, so the two are mirror images. */
+.cluster {
+  position: absolute;
+  bottom: 0;
+  width: 50%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.cluster > * {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.cluster--left {
+  left: 0;
+  --edge-x: calc(env(safe-area-inset-left, 0px) + 3.5vw);
+  --channel: var(--port);
+  --channel-rgb: var(--port-rgb);
+}
+
+.cluster--right {
+  right: 0;
+  --edge-x: calc(env(safe-area-inset-right, 0px) + 3.5vw);
+  --channel: var(--starboard);
+  --channel-rgb: var(--starboard-rgb);
+}
+
+/* Stick box: the ring plus a 20 % margin all round, so the tick labels
+   outside the hairline belong to the stick. Only a touch inside the ring
+   starts it, though (widgets.js): a landing outside would begin at full
+   deflection. */
+.stick {
+  bottom: calc(var(--edge-y) - var(--stick) * 0.2);
+  width: calc(var(--stick) * 1.4);
+  height: calc(var(--stick) * 1.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cluster--left .stick {
+  left: calc(var(--edge-x) - var(--stick) * 0.2);
+}
+
+.cluster--right .stick {
+  right: calc(var(--edge-x) - var(--stick) * 0.2);
+}
+
+.rocker {
+  display: flex;
+  flex-direction: column;
+  gap: 1vh;
+  width: var(--bw);
+}
+
+.rocker--z {
+  bottom: calc(var(--edge-y) + var(--stick) + var(--gap));
+}
+
+.cluster--left .rocker--z {
+  left: calc(var(--edge-x) + (var(--stick) - var(--bw)) / 2);
+}
+
+.cluster--right .rocker--z {
+  right: calc(var(--edge-x) + (var(--stick) - var(--bw)) / 2);
+}
+
+.slider {
+  bottom: var(--edge-y);
+  width: var(--bw);
+  height: calc(2 * var(--bh) + 1vh);
+}
+
+.cluster--left .slider {
+  left: calc(var(--edge-x) + var(--stick) + 2vw);
+}
+
+.cluster--right .slider {
+  right: calc(var(--edge-x) + var(--stick) + 2vw);
+}
+
+/* A direct child of the cluster, positioned like the rockers. Its selector
+   outranks `.key`, whose position: relative would otherwise win the cascade
+   and drop the button out of the layout. */
+.cluster > .key--rot {
+  position: absolute;
+  bottom: calc(var(--edge-y) + var(--stick) + var(--gap));
+  width: calc(var(--bh) * 2.1);
+  --channel: var(--rot);
+  --channel-rgb: var(--rot-rgb);
+}
+
+.cluster--left .key--rot {
+  left: calc(var(--edge-x) + var(--stick) + 2vw);
+}
+
+.cluster--right .key--rot {
+  right: calc(var(--edge-x) + var(--stick) + 2vw);
+}
+
+/* Sticks and Z rockers are what ROT re-tasks; the grippers keep their arm's
+   colour because they keep doing the same thing. */
+body.is-rotate .stick,
+body.is-rotate .rocker--z {
+  --channel: var(--rot);
+  --channel-rgb: var(--rot-rgb);
+}
+
+/* --- buttons -------------------------------------------------------------- */
+
+.key {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  height: var(--bh);
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: var(--text-key);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  transition:
+    background-color 90ms linear,
+    border-color 90ms linear;
+}
+
+/* The arm's index line, inset at the left edge. */
+.key::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 2px;
+  background: var(--channel);
+}
+
+/* The key this button puts on the wire. Written by ui.js from the keymap,
+   so the HUD is its own legend and cannot drift from it. */
+.key__badge {
+  font-size: var(--text-badge);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--channel);
+}
+
+.key.is-on {
+  border-color: var(--channel);
+  background: rgba(var(--channel-rgb), 0.22);
+  color: #fff;
+}
+
+/* --- stick ---------------------------------------------------------------- */
+
+.stick__ring {
+  position: relative;
+  width: var(--stick);
+  height: var(--stick);
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--ground);
+  transition: border-color 140ms linear;
+}
+
+/* A faint crosshair marks the centre — the origin a thumb feels for. */
+.stick__ring::before,
+.stick__ring::after {
+  content: "";
+  position: absolute;
+  background: var(--line-soft);
+}
+
+.stick__ring::before {
+  left: 50%;
+  top: 6%;
+  width: 1px;
+  height: 88%;
+}
+
+.stick__ring::after {
+  top: 50%;
+  left: 6%;
+  height: 1px;
+  width: 88%;
+}
+
+.stick.is-on .stick__ring {
+  border-color: var(--channel);
+}
+
+.stick__cap {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40%;
+  height: 40%;
+  margin: -20% 0 0 -20%;
+  border-radius: 50%;
+  border: 1.5px solid var(--channel);
+  /* The fill tracks the duty ratio, so a gentle push reads as a faint cap
+     and a full push as a solid one. */
+  background: rgba(var(--channel-rgb), calc(var(--duty, 0) * 0.85));
+  /* No easing: the cap has to sit under the thumb, not chase it. */
+  transform: translate(var(--cx, 0px), var(--cy, 0px));
+  z-index: 1;
+}
+
+.stick__cap::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--channel);
+}
+
+/* Tick labels just outside the ring: the actual wire keys, lit as they are
+   pressed. */
+.stick__tick {
+  position: absolute;
+  width: 1.6em;
+  height: 1.2em;
+  font-size: var(--text-badge);
+  line-height: 1.2em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--channel);
+  opacity: 0.55;
+}
+
+.stick__tick.is-on {
+  opacity: 1;
+  font-weight: 700;
+  text-shadow: 0 0 8px currentColor;
+}
+
+.stick__tick--up {
+  top: -1.5em;
+  left: 50%;
+  margin-left: -0.8em;
+}
+
+.stick__tick--down {
+  bottom: -1.5em;
+  left: 50%;
+  margin-left: -0.8em;
+}
+
+.stick__tick--left {
+  left: -1.9em;
+  top: 50%;
+  margin-top: -0.6em;
+}
+
+.stick__tick--right {
+  right: -1.9em;
+  top: 50%;
+  margin-top: -0.6em;
+}
+
+.stick__label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* Just below the down tick (1.5em of badge outside the ring), whatever
+     the device: anchoring to the hit box bottom collides on a phone, where
+     the box's 20 % margin is smaller than the tick offset. */
+  top: calc(50% + var(--stick) / 2 + 1.6 * var(--text-badge));
+  text-align: center;
+  font-size: var(--text-label);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+
+body.is-rotate .stick__label {
+  color: var(--rot);
+}
+
+/* --- gripper slider ------------------------------------------------------- */
+
+/* Same footprint as a rocker. The knob is the target the thumb set; the thin
+   mark is where the gripper is believed to be, and the two meet once it has
+   arrived. Positioned by `.cluster > *`, so no position here. */
+.slider {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  transition: border-color 90ms linear;
+}
+
+.slider.is-on {
+  border-color: var(--channel);
+}
+
+.slider__end {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  height: calc(var(--bh) * 0.55);
+  font-size: var(--text-label);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.slider__track {
+  position: relative;
+  flex: 1;
+  margin: 0 30%;
+  border-left: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+  touch-action: none;
+}
+
+.slider__knob {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--target, 0) * 100%);
+  width: 140%;
+  height: 6px;
+  transform: translate(-50%, -50%);
+  border-radius: 3px;
+  background: var(--channel);
+  pointer-events: none;
+}
+
+.slider__mark {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--estimate, 0) * 100%);
+  width: 180%;
+  height: 1px;
+  transform: translate(-50%, -50%);
+  background: var(--ink);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+/* --- link down ------------------------------------------------------------ */
+
+/* Controls stay live to the touch while the link is down — they simply send
+   nothing — but they read as inert so the operator trusts the status pill. */
+body.is-offline .cluster {
+  opacity: 0.55;
+}
+
+/* --- phones --------------------------------------------------------------- */
+
+/* A landscape phone: thumbs reach everything, so the only cost is video
+   hidden under the clusters — let more of it through, and shorten the
+   status pill. */
+@media (max-height: 500px) {
+  :root {
+    --ground: rgba(8, 10, 12, 0.3);
+  }
+
+  .pill__mode {
+    display: none;
+  }
+}
+
+/* --- portrait ------------------------------------------------------------- */
+
+.gate {
+  display: none;
+}
+
+@media (orientation: portrait) {
+  .feed,
+  .feed-empty,
+  .hud {
+    display: none;
+  }
+
+  .gate {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6em;
+    background: var(--ground-solid);
+    text-align: center;
+  }
+
+  .gate__title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 0.3em;
+    text-indent: 0.3em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  .gate__note {
+    margin: 0;
+    font-size: 14px;
+    color: var(--dim);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill--status[data-state="connecting"] .led {
+    animation: none;
+  }
+}

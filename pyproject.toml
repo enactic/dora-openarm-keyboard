@@ -52,7 +52,13 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-dora_openarm_keyboard = ["static/*.html", "static/*.js"]
+dora_openarm_keyboard = [
+  "static/*.html",
+  "static/*.js",
+  "static/ipad/*.html",
+  "static/ipad/*.js",
+  "static/ipad/*.css",
+]
 
 [tool.ruff.lint]
 extend-select = [

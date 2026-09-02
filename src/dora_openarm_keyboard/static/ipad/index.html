@@ -1,0 +1,158 @@
+<!doctype html>
+<!--
+  Copyright 2026 Enactic, Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!-- viewport-fit=cover puts the HUD under the notch and the rounded
+         corners; the page never scrolls or zooms, so scaling is pinned. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0b0d10" />
+    <title>OpenArm Teleop</title>
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="ui.js"></script>
+  </head>
+  <body>
+    <video id="video" class="feed" autoplay muted playsinline></video>
+    <div class="feed-empty" id="feed-empty">
+      <p class="feed-empty__title">No video</p>
+      <p class="feed-empty__note" id="feed-note">
+        Camera feed hasn't arrived. Controls still work.
+      </p>
+    </div>
+
+    <div class="hud">
+      <!-- The strip sits outside thumb reach on purpose: HOME and QUIT are
+           the two controls that should cost the operator a free hand. -->
+      <header class="strip">
+        <button
+          class="pill pill--icon"
+          id="info-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="info"
+          aria-label="Link details and key bindings"
+        >
+          ?
+        </button>
+        <button class="pill pill--confirm" id="home" type="button">
+          <span class="pill__bar"></span>
+          <span class="pill__text">Home</span>
+          <span class="pill__hint">hold</span>
+        </button>
+        <!-- Tappable only while there is a link to recover; ui.js disables it
+             otherwise. -->
+        <button class="pill pill--status" id="link" type="button" disabled data-state="connecting">
+          <span class="led"></span>
+          <span class="pill__text" id="status">Connecting…</span>
+          <span class="pill__mode" id="mode">Translate</span>
+        </button>
+        <div class="pill pill--seg" id="speed" role="radiogroup" aria-label="Speed">
+          <button type="button" role="radio" data-preset="0.25" aria-checked="false">25</button>
+          <button type="button" role="radio" data-preset="0.5" aria-checked="true">50</button>
+          <button type="button" role="radio" data-preset="1" aria-checked="false">100</button>
+        </div>
+        <button class="pill pill--confirm pill--quit" id="quit" type="button">
+          <span class="pill__bar"></span>
+          <span class="pill__text">Quit</span>
+          <span class="pill__hint">hold</span>
+        </button>
+      </header>
+
+      <section class="info" id="info" hidden>
+        <p class="info__detail" id="status-detail" hidden></p>
+        <h2 class="info__title">Key bindings reported by the node</h2>
+        <pre class="info__body" id="help">Waiting for the node to send its key bindings.</pre>
+      </section>
+
+      <div class="cluster cluster--left" data-arm="left">
+        <div class="rocker rocker--z">
+          <button class="key" id="z-left-up" type="button">
+            <span class="key__text" data-arrow="▲">Z ▲</span>
+          </button>
+          <button class="key" id="z-left-down" type="button">
+            <span class="key__text" data-arrow="▼">Z ▼</span>
+          </button>
+        </div>
+        <button class="key key--rot" id="rot-left" type="button" aria-pressed="false">
+          <span class="key__text">Rot</span>
+        </button>
+        <div class="slider" id="grip-left">
+          <span class="slider__end slider__end--open">Open</span>
+          <div class="slider__track">
+            <span class="slider__mark"></span>
+            <span class="slider__knob"></span>
+          </div>
+          <span class="slider__end slider__end--close">Close</span>
+        </div>
+        <div class="stick" id="stick-left">
+          <div class="stick__ring">
+            <span class="stick__tick stick__tick--up"></span>
+            <span class="stick__tick stick__tick--down"></span>
+            <span class="stick__tick stick__tick--left"></span>
+            <span class="stick__tick stick__tick--right"></span>
+            <div class="stick__cap"></div>
+          </div>
+          <span class="stick__label">X · Y</span>
+        </div>
+      </div>
+
+      <div class="cluster cluster--right" data-arm="right">
+        <div class="rocker rocker--z">
+          <button class="key" id="z-right-up" type="button">
+            <span class="key__text" data-arrow="▲">Z ▲</span>
+          </button>
+          <button class="key" id="z-right-down" type="button">
+            <span class="key__text" data-arrow="▼">Z ▼</span>
+          </button>
+        </div>
+        <button class="key key--rot" id="rot-right" type="button" aria-pressed="false">
+          <span class="key__text">Rot</span>
+        </button>
+        <div class="slider" id="grip-right">
+          <span class="slider__end slider__end--open">Open</span>
+          <div class="slider__track">
+            <span class="slider__mark"></span>
+            <span class="slider__knob"></span>
+          </div>
+          <span class="slider__end slider__end--close">Close</span>
+        </div>
+        <div class="stick" id="stick-right">
+          <div class="stick__ring">
+            <span class="stick__tick stick__tick--up"></span>
+            <span class="stick__tick stick__tick--down"></span>
+            <span class="stick__tick stick__tick--left"></span>
+            <span class="stick__tick stick__tick--right"></span>
+            <div class="stick__cap"></div>
+          </div>
+          <span class="stick__label">X · Y</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="gate">
+      <p class="gate__title">Rotate device</p>
+      <p class="gate__note">This HUD runs in landscape.</p>
+    </div>
+  </body>
+</html>

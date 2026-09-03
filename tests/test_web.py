@@ -180,6 +180,69 @@ async def _run_client(server, events, port):
             await pc.close()
 
 
+def test_tablet_page_served():
+    # The touch control page is a second client of the same protocol, served
+    # from its own directory next to the keyboard page so their assets never
+    # collide.
+    port = _free_port()
+    server = WebTeleopServer(
+        on_key=lambda action, name: None, host="127.0.0.1", port=port
+    )
+    asyncio.run(_run_tablet_fetches(server, port))
+
+
+async def _run_tablet_fetches(server, port):
+    base = f"http://127.0.0.1:{port}"
+    await server.start()
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Without the trailing slash, the page's relative references
+            # would resolve outside its directory.  The location is relative
+            # so the redirect still lands inside the directory when a reverse
+            # proxy mounts the node under a prefix.
+            async with session.get(f"{base}/tablet", allow_redirects=False) as response:
+                assert response.status == 302
+                assert response.headers["Location"] == "tablet/"
+
+            async with session.get(f"{base}/tablet") as response:
+                assert str(response.url) == f"{base}/tablet/"
+                assert response.status == 200
+                assert response.content_type == "text/html"
+                page = await response.text()
+                assert 'id="stick-left"' in page
+                assert 'src="ui.js"' in page
+
+            scripts = (
+                "app.js",
+                "controls.js",
+                "grip.js",
+                "pulser.js",
+                "ui.js",
+                "widgets.js",
+            )
+            for name in scripts:
+                async with session.get(f"{base}/tablet/{name}") as response:
+                    assert response.status == 200, name
+                    assert response.content_type == "text/javascript", name
+
+            async with session.get(f"{base}/tablet/style.css") as response:
+                assert response.status == 200
+                assert response.content_type == "text/css"
+
+            # The page negotiates through the node's own /offer, one level up.
+            async with session.get(f"{base}/tablet/app.js") as response:
+                assert '"../offer"' in await response.text()
+
+            async with session.get(f"{base}/tablet/missing.js") as response:
+                assert response.status == 404
+
+            # The keyboard page is untouched.
+            async with session.get(f"{base}/") as response:
+                assert "teleop.js" in await response.text()
+    finally:
+        await server.stop()
+
+
 def test_oneshot_signaling():
     # WebRTC-only mode: no HTTP server. An offer is handed to negotiate_oneshot,
     # the answer comes back over a TCP socket the caller listens on, and once

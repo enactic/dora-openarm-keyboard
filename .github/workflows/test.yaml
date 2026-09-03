@@ -39,3 +39,9 @@ jobs:
       - name: Run pytest
         run: |
           uv run pytest
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Run node tests
+        run: |
+          node --test 'tests/js/**/*.test.mjs'
